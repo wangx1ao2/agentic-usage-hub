@@ -302,19 +302,29 @@
     <div class="chart-card">
       <div class="chart-header">
         <div>
-          <h2 class="chart-title">AI 厂商聚合历史走势 (AI Provider Timeline)</h2>
-          <p class="chart-desc">同一公司的模型合并为一条专属曲线，包含 Google Gemini、OpenAI、智谱 GLM、DeepSeek</p>
+          <h2 class="chart-title" id="chart-main-title">AI 厂商聚合历史走势 (AI Provider Timeline)</h2>
+          <p class="chart-desc" id="chart-main-desc">支持按厂商全景或核心模型细分，包含 Claude (Anthropic)、Grok (xAI)、Google Gemini、OpenAI、智谱 GLM、DeepSeek</p>
         </div>
 
-        <!-- Axis Mode Toggle (User Requirement 2) -->
+        <!-- Dimension and Axis Mode Toggles -->
         <div class="chart-controls">
+          <div class="axis-switch" title="切换折线图的聚合维度：按厂商大类聚合或按各核心大模型细分">
+            <span class="axis-label">图表维度:</span>
+            <button id="dim-company" class="btn-axis active" onclick="setChartDimension('company')">
+              🏢 按厂商大类
+            </button>
+            <button id="dim-model" class="btn-axis" onclick="setChartDimension('model')">
+              🧬 按核心模型
+            </button>
+          </div>
+
           <div class="axis-switch">
-            <span class="axis-label">纵坐标轴单位:</span>
+            <span class="axis-label">坐标单位:</span>
             <button id="axis-cost" class="btn-axis active" onclick="setAxisMode('cost')">
-              💵 按美元金额 ($)
+              💵 按金额 ($)
             </button>
             <button id="axis-tokens" class="btn-axis" onclick="setAxisMode('tokens')">
-              🔢 按 Token 数量 (Tokens)
+              🔢 按 Token 数
             </button>
           </div>
         </div>
@@ -395,7 +405,7 @@
       <div class="panel-card">
         <div class="panel-header">
           <h3 class="panel-title">AI 厂商综合消耗矩阵 (Company Matrix)</h3>
-          <span class="panel-badge" id="company-count">4 大主要厂商</span>
+          <span class="panel-badge" id="company-count">6 大主流厂商</span>
         </div>
         <div class="company-grid" id="company-grid">
           <!-- Dynamically populated -->

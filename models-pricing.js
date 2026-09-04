@@ -58,6 +58,34 @@ const COMPANY_CONFIG = {
 // 官方标准目录价与旗舰折算价 (单位: USD / 1M Tokens)
 const MODEL_CATALOG = {
   // ── Anthropic Claude ───────────────────────────
+  'claude-fable-5': {
+    label: 'Claude Fable 5 (Next-Gen Autonomous Agent)',
+    company: 'Anthropic',
+    agent: 'claude',
+    standard: { in: 5.00, out: 25.00, cache: 0.50 },
+    flagship: { in: 5.00, out: 25.00, cache: 0.50 }
+  },
+  'claude-4.5-sonnet': {
+    label: 'Claude 4.5 Sonnet',
+    company: 'Anthropic',
+    agent: 'claude',
+    standard: { in: 3.50, out: 18.00, cache: 0.35 },
+    flagship: { in: 3.50, out: 18.00, cache: 0.35 }
+  },
+  'claude-4.5-opus': {
+    label: 'Claude 4.5 Opus',
+    company: 'Anthropic',
+    agent: 'claude',
+    standard: { in: 18.00, out: 90.00, cache: 1.80 },
+    flagship: { in: 18.00, out: 90.00, cache: 1.80 }
+  },
+  'claude-4-haiku': {
+    label: 'Claude 4 Haiku',
+    company: 'Anthropic',
+    agent: 'claude',
+    standard: { in: 1.00, out: 5.00, cache: 0.10 },
+    flagship: { in: 1.00, out: 5.00, cache: 0.10 }
+  },
   'claude-3-7-sonnet': {
     label: 'Claude 3.7 Sonnet (Hybrid Reasoning)',
     company: 'Anthropic',
@@ -95,6 +123,27 @@ const MODEL_CATALOG = {
   },
 
   // ── xAI Grok ────────────────────────────────────
+  'grok-4.6': {
+    label: 'Grok 4.6 (Flagship Multimodal / Reasoning)',
+    company: 'xAI',
+    agent: 'grok',
+    standard: { in: 4.00, out: 20.00, cache: 0.80 },
+    flagship: { in: 4.00, out: 20.00, cache: 0.80 }
+  },
+  'grok-4.6-mini': {
+    label: 'Grok 4.6 Mini',
+    company: 'xAI',
+    agent: 'grok',
+    standard: { in: 0.80, out: 3.20, cache: 0.16 },
+    flagship: { in: 0.80, out: 3.20, cache: 0.16 }
+  },
+  'grok-4': {
+    label: 'Grok 4 (Advanced Reasoning)',
+    company: 'xAI',
+    agent: 'grok',
+    standard: { in: 3.50, out: 17.50, cache: 0.70 },
+    flagship: { in: 3.50, out: 17.50, cache: 0.70 }
+  },
   'grok-3': {
     label: 'Grok 3 (Thinking / Code)',
     company: 'xAI',
@@ -375,6 +424,21 @@ function resolveModelInfo(rawModelName, defaultAgent = 'openclaw') {
   const m = cleaned.toLowerCase();
 
   // Anthropic Claude
+  if (m.includes('fable') || m.includes('claude-5') || m.includes('claude-fable')) {
+    return { canonicalName: 'claude-fable-5', label: 'Claude Fable 5 (Next-Gen Autonomous Agent)', company: 'Anthropic', agent: 'claude', pricing: MODEL_CATALOG['claude-fable-5'].standard };
+  }
+  if (m.includes('claude-4.5') || m.includes('claude-4-5')) {
+    if (m.includes('opus')) {
+      return { canonicalName: 'claude-4.5-opus', label: 'Claude 4.5 Opus', company: 'Anthropic', agent: 'claude', pricing: MODEL_CATALOG['claude-4.5-opus'].standard };
+    }
+    return { canonicalName: 'claude-4.5-sonnet', label: 'Claude 4.5 Sonnet', company: 'Anthropic', agent: 'claude', pricing: MODEL_CATALOG['claude-4.5-sonnet'].standard };
+  }
+  if (m.includes('claude-4')) {
+    if (m.includes('haiku')) {
+      return { canonicalName: 'claude-4-haiku', label: 'Claude 4 Haiku', company: 'Anthropic', agent: 'claude', pricing: MODEL_CATALOG['claude-4-haiku'].standard };
+    }
+    return { canonicalName: 'claude-4.5-sonnet', label: 'Claude 4.5 Sonnet', company: 'Anthropic', agent: 'claude', pricing: MODEL_CATALOG['claude-4.5-sonnet'].standard };
+  }
   if (m.includes('claude-3-7') || m.includes('claude-3.7')) {
     return { canonicalName: 'claude-3-7-sonnet', label: 'Claude 3.7 Sonnet', company: 'Anthropic', agent: 'claude', pricing: MODEL_CATALOG['claude-3-7-sonnet'].standard };
   }
@@ -395,6 +459,15 @@ function resolveModelInfo(rawModelName, defaultAgent = 'openclaw') {
   }
 
   // xAI Grok
+  if (m.includes('grok-4.6-mini') || m.includes('grok-4-6-mini')) {
+    return { canonicalName: 'grok-4.6-mini', label: 'Grok 4.6 Mini', company: 'xAI', agent: 'grok', pricing: MODEL_CATALOG['grok-4.6-mini'].standard };
+  }
+  if (m.includes('grok-4.6') || m.includes('grok-4-6') || m.includes('grok4.6')) {
+    return { canonicalName: 'grok-4.6', label: 'Grok 4.6 (Flagship Multimodal / Reasoning)', company: 'xAI', agent: 'grok', pricing: MODEL_CATALOG['grok-4.6'].standard };
+  }
+  if (m.includes('grok-4') || m.includes('grok4')) {
+    return { canonicalName: 'grok-4', label: 'Grok 4 (Advanced Reasoning)', company: 'xAI', agent: 'grok', pricing: MODEL_CATALOG['grok-4'].standard };
+  }
   if (m.includes('grok-3-mini')) {
     return { canonicalName: 'grok-3-mini', label: 'Grok 3 Mini', company: 'xAI', agent: 'grok', pricing: MODEL_CATALOG['grok-3-mini'].standard };
   }

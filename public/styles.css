@@ -822,6 +822,25 @@ body {
   margin-top: 4px;
 }
 
+.company-card-standby {
+  opacity: 0.85;
+  border-style: dashed;
+}
+
+.company-card-standby:hover {
+  opacity: 1;
+}
+
+.company-standby-badge {
+  margin-left: auto;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(148, 163, 184, 0.15);
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
 /* Model Ranking List */
 .model-list {
   display: flex;

@@ -140,4 +140,41 @@ test('Adapters & Calculations Unit Tests', async (t) => {
       assert.ok(typeof p.companies.xai.cost === 'number');
     }
   });
+
+  await t.test('11. Models Pricing: resolves and calculates Claude Fable 5 and Claude 4.5 accurately', () => {
+    const { calculateModelCost, resolveModelInfo } = require('../models-pricing');
+    const fableInfo = resolveModelInfo('anthropic/claude-fable-5-preview');
+    assert.equal(fableInfo.canonicalName, 'claude-fable-5');
+    assert.equal(fableInfo.company, 'Anthropic');
+    assert.equal(fableInfo.agent, 'claude');
+    assert.equal(fableInfo.pricing.in, 5.00);
+    assert.equal(fableInfo.pricing.out, 25.00);
+
+    // 1M fresh in ($5), 500k out ($12.50), 200k cache ($0.10)
+    // 0.8M * 5 + 0.2M * 0.50 + 0.5M * 25 = 4.00 + 0.10 + 12.50 = 16.60
+    const cost = calculateModelCost('claude-fable-5', 1_000_000, 500_000, 200_000);
+    assert.equal(+cost.toFixed(2), 16.60);
+
+    const c45Info = resolveModelInfo('claude-4.5-sonnet');
+    assert.equal(c45Info.company, 'Anthropic');
+    assert.equal(c45Info.pricing.in, 3.50);
+  });
+
+  await t.test('12. Models Pricing: resolves and calculates Grok 4.6 accurately', () => {
+    const { calculateModelCost, resolveModelInfo } = require('../models-pricing');
+    const grok46Info = resolveModelInfo('xai/grok-4.6');
+    assert.equal(grok46Info.canonicalName, 'grok-4.6');
+    assert.equal(grok46Info.company, 'xAI');
+    assert.equal(grok46Info.pricing.in, 4.00);
+    assert.equal(grok46Info.pricing.out, 20.00);
+
+    // 1M in (200k cache, 800k fresh), 500k out
+    // 0.8M * 4 + 0.2M * 0.80 + 0.5M * 20 = 3.20 + 0.16 + 10.00 = 13.36
+    const cost = calculateModelCost('grok-4.6', 1_000_000, 500_000, 200_000);
+    assert.equal(+cost.toFixed(2), 13.36);
+
+    const grok4Info = resolveModelInfo('grok-4');
+    assert.equal(grok4Info.company, 'xAI');
+    assert.equal(grok4Info.pricing.in, 3.50);
+  });
 });

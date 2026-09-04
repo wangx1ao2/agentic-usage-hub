@@ -11,6 +11,7 @@ function getLocalDateStr(dateObj = new Date()) {
 let currentPricingTier = 'standard';
 let currentAgentFilter = 'all';
 let currentAxisMode = 'cost'; // 'cost' | 'tokens'
+let chartDimension = 'company'; // 'company' | 'model'
 let currentDatePreset = 'milestone'; // 'milestone' | 'all' | '30d' | '7d' | 'custom'
 let startDate = '2026-05-22';
 let endDate = null; // Dynamically resolved on load
@@ -231,38 +232,129 @@ function renderMetrics(timeline) {
   document.getElementById('stat-gemini-sub').innerText = `${geminiDays}天会话实录 (Gemini 3.7 Flash)`;
 }
 
-// 2. Render Company-Level Independent Line Chart (with Zoom & Y-Scale support)
+// Helper for dynamic model branding colors
+function getModelColor(mName) {
+  const m = (mName || '').toLowerCase();
+  if (m.includes('fable') || m.includes('claude')) return '#d97706'; // Anthropic Amber
+  if (m.includes('grok')) return '#8b5cf6'; // xAI Purple
+  if (m.includes('gemini')) return '#06b6d4'; // Gemini Cyan
+  if (m.includes('glm') || m.includes('zcode')) return '#10b981'; // ZCode Emerald
+  if (m.includes('deepseek')) return '#f43f5e'; // DeepSeek Rose
+  if (m.includes('image')) return '#ec4899'; // Image Pink
+  if (m.includes('qwen')) return '#f59e0b'; // Qwen Orange
+  if (m.includes('terra')) return '#38bdf8';
+  if (m.includes('luna')) return '#818cf8';
+  return '#3b82f6'; // OpenAI Blue default
+}
+
+function setChartDimension(dim) {
+  chartDimension = dim;
+  document.querySelectorAll('.axis-switch button[id^="dim-"]').forEach(btn => {
+    btn.classList.toggle('active', btn.id === `dim-${dim}`);
+  });
+  const title = document.getElementById('chart-main-title');
+  const desc = document.getElementById('chart-main-desc');
+  if (dim === 'company') {
+    if (title) title.innerText = 'AI 厂商聚合历史走势 (AI Provider Timeline)';
+    if (desc) desc.innerText = '按厂商大类聚合专属曲线，包含 Claude (Anthropic)、Grok (xAI)、Google Gemini、OpenAI、智谱 GLM、DeepSeek';
+  } else {
+    if (title) title.innerText = 'AI 核心大模型历史走势 (AI Model Timeline)';
+    if (desc) desc.innerText = '按核心大模型细分专属曲线，支持 GPT-5.6 Sol、Gemini 3.7 Flash、GLM-5.3、Claude Fable 5、Grok 4.6 等独立监控';
+  }
+  renderChart(getFilteredTimeline());
+}
+
+// 2. Render Company / Model Independent Line Chart (with Zoom & Y-Scale support)
 function renderChart(timeline) {
   const { companies } = cachedData;
   const ctx = document.getElementById('mainChart').getContext('2d');
 
   const labels = timeline.map(d => d.date.slice(5));
 
-  // Build a dataset for EACH COMPANY (4 clean lines)
-  const datasets = companies.map(company => {
-    const dataPoints = timeline.map(day => {
-      const compData = day.byCompany[company.name];
-      if (!compData) return 0;
-      const rawVal = currentAxisMode === 'cost' ? +compData.cost.toFixed(4) : compData.tokens;
-      // In Log scale, non-positive values should be null or 0.001
-      if (isLogScale && rawVal <= 0) return null;
-      return rawVal;
+  let datasets = [];
+
+  if (chartDimension === 'company') {
+    // Build a dataset for EACH COMPANY (including Claude, Grok, OpenAI, Gemini, ZCode, DeepSeek)
+    datasets = companies.map(company => {
+      const dataPoints = timeline.map(day => {
+        const compData = day.byCompany[company.name];
+        if (!compData) return 0;
+        const rawVal = currentAxisMode === 'cost' ? +compData.cost.toFixed(4) : compData.tokens;
+        // In Log scale, non-positive values should be null
+        if (isLogScale && rawVal <= 0) return null;
+        return rawVal;
+      });
+
+      return {
+        label: company.label || company.name,
+        companyName: company.name,
+        data: dataPoints,
+        borderColor: company.color,
+        backgroundColor: company.color + '18',
+        borderWidth: 2.8,
+        pointRadius: 2.5,
+        pointHoverRadius: 6,
+        tension: 0.35,
+        fill: false,
+        spanGaps: true
+      };
+    });
+  } else {
+    // Build datasets for CORE MODELS (including Claude Fable 5, Grok 4.6, GPT-5.6 Sol, Gemini, GLM, etc.)
+    const modelTotals = {};
+    timeline.forEach(day => {
+      if (day.byModel) {
+        for (const [mName, mData] of Object.entries(day.byModel)) {
+          if (!modelTotals[mName]) {
+            modelTotals[mName] = { name: mName, cost: 0, tokens: 0, company: mData.company };
+          }
+          modelTotals[mName].cost += mData.cost;
+          modelTotals[mName].tokens += mData.tokens;
+        }
+      }
     });
 
-    return {
-      label: company.label || company.name,
-      companyName: company.name,
-      data: dataPoints,
-      borderColor: company.color,
-      backgroundColor: company.color + '18',
-      borderWidth: 2.8,
-      pointRadius: 2.5,
-      pointHoverRadius: 6,
-      tension: 0.35,
-      fill: false,
-      spanGaps: true
-    };
-  });
+    // Also inject flagship future models so users can view them even before first run
+    const flagshipDefaults = [
+      { name: 'Claude Fable 5', company: 'Anthropic' },
+      { name: 'Grok 4.6', company: 'xAI' }
+    ];
+    flagshipDefaults.forEach(f => {
+      if (!modelTotals[f.name]) {
+        modelTotals[f.name] = { name: f.name, cost: 0, tokens: 0, company: f.company };
+      }
+    });
+
+    const sortedModelKeys = Object.keys(modelTotals).sort((a, b) => {
+      if (modelTotals[a].tokens > 0 && modelTotals[b].tokens === 0) return -1;
+      if (modelTotals[a].tokens === 0 && modelTotals[b].tokens > 0) return 1;
+      return modelTotals[b].cost - modelTotals[a].cost;
+    }).slice(0, 8);
+
+    datasets = sortedModelKeys.map(mName => {
+      const mColor = getModelColor(mName);
+      const dataPoints = timeline.map(day => {
+        const mData = day.byModel ? day.byModel[mName] : null;
+        const rawVal = currentAxisMode === 'cost' ? (mData ? +mData.cost.toFixed(4) : 0) : (mData ? mData.tokens : 0);
+        if (isLogScale && rawVal <= 0) return null;
+        return rawVal;
+      });
+
+      return {
+        label: mName,
+        modelName: mName,
+        data: dataPoints,
+        borderColor: mColor,
+        backgroundColor: mColor + '18',
+        borderWidth: 2.6,
+        pointRadius: 2.5,
+        pointHoverRadius: 6,
+        tension: 0.35,
+        fill: false,
+        spanGaps: true
+      };
+    });
+  }
 
   const isLight = getEffectiveTheme() === 'light';
   const gridColor = isLight ? 'rgba(0, 0, 0, 0.06)' : 'rgba(255, 255, 255, 0.04)';
@@ -338,14 +430,21 @@ function renderChart(timeline) {
               const val = context.raw;
               if (val === null || val === undefined || val === 0) return null;
               const idx = context.dataIndex;
-              const companyName = context.dataset.companyName;
-              const models = timeline[idx]?.byCompany[companyName]?.models || [];
-              const modelHint = models.length > 0 ? ` [${models.join(', ')}]` : '';
-
-              if (currentAxisMode === 'cost') {
-                return ` ${context.dataset.label}: $${Number(val).toFixed(4)}${modelHint}`;
+              if (chartDimension === 'company') {
+                const companyName = context.dataset.companyName;
+                const models = timeline[idx]?.byCompany[companyName]?.models || [];
+                const modelHint = models.length > 0 ? ` [${models.join(', ')}]` : '';
+                if (currentAxisMode === 'cost') {
+                  return ` ${context.dataset.label}: $${Number(val).toFixed(4)}${modelHint}`;
+                } else {
+                  return ` ${context.dataset.label}: ${formatTokens(val)} Tokens${modelHint}`;
+                }
               } else {
-                return ` ${context.dataset.label}: ${formatTokens(val)} Tokens${modelHint}`;
+                if (currentAxisMode === 'cost') {
+                  return ` ${context.dataset.label}: $${Number(val).toFixed(4)}`;
+                } else {
+                  return ` ${context.dataset.label}: ${formatTokens(val)} Tokens`;
+                }
               }
             }
           }
@@ -373,12 +472,12 @@ function renderChart(timeline) {
   // Render Custom Badge Legend
   const legendContainer = document.getElementById('chart-legend');
   legendContainer.innerHTML = '';
-  companies.forEach((company, idx) => {
+  datasets.forEach((ds, idx) => {
     const badge = document.createElement('div');
     badge.className = 'legend-badge';
     badge.innerHTML = `
-      <span class="legend-dot" style="background-color: ${company.color}"></span>
-      <span>${company.label || company.name}</span>
+      <span class="legend-dot" style="background-color: ${ds.borderColor}"></span>
+      <span>${ds.label}</span>
     `;
     badge.onclick = () => {
       const meta = chartInstance.getDatasetMeta(idx);
@@ -401,16 +500,18 @@ function renderCompanyGrid(timeline) {
     const compTokens = timeline.reduce((s, d) => s + (d.byCompany[comp.name]?.tokens || 0), 0);
     const compDays = timeline.filter(d => (d.byCompany[comp.name]?.tokens || 0) > 0).length;
 
+    const isStandby = compDays === 0 && compCost === 0;
     const card = document.createElement('div');
-    card.className = 'company-card';
+    card.className = `company-card ${isStandby ? 'company-card-standby' : ''}`;
     card.innerHTML = `
       <div class="company-header">
         <div class="company-color-bar" style="background-color: ${comp.color}"></div>
         <div class="company-name">${comp.label || comp.name}</div>
+        ${isStandby ? '<span class="company-standby-badge">待使用</span>' : ''}
       </div>
       <div class="company-cost font-mono">${formatUSD(compCost)}</div>
       <div class="company-tokens font-mono">${formatTokens(compTokens)} Tokens</div>
-      <div class="company-sub">区间活跃: ${compDays} 天</div>
+      <div class="company-sub">${isStandby ? '支持接入 · 随时就绪' : `区间活跃: ${compDays} 天`}</div>
     `;
     grid.appendChild(card);
   });
@@ -458,7 +559,7 @@ function renderModelRanking(timeline) {
     }
   }
 
-  // Family definitions
+  // Family definitions (6 core major families)
   const familyDefs = [
     {
       id: 'openai',
@@ -467,6 +568,22 @@ function renderModelRanking(timeline) {
       color: '#3b82f6',
       badge: 'OpenAI',
       badgeClass: 'badge-codex'
+    },
+    {
+      id: 'claude',
+      name: 'Anthropic Claude 全系模型',
+      company: 'Anthropic',
+      color: '#d97706',
+      badge: 'Claude',
+      badgeClass: 'badge-anthropic'
+    },
+    {
+      id: 'grok',
+      name: 'xAI Grok 全系模型',
+      company: 'xAI',
+      color: '#8b5cf6',
+      badge: 'Grok',
+      badgeClass: 'badge-xai'
     },
     {
       id: 'zcode',
@@ -508,6 +625,22 @@ function renderModelRanking(timeline) {
       });
     }
 
+    if (subModels.length === 0) {
+      if (fam.id === 'claude') {
+        subModels.push(
+          { modelName: 'Claude Fable 5 (Next-Gen Agent)', cost: 0, tokens: 0, standby: true },
+          { modelName: 'Claude 3.7 Sonnet (Hybrid Reasoning)', cost: 0, tokens: 0, standby: true },
+          { modelName: 'Claude 3.5 Sonnet', cost: 0, tokens: 0, standby: true }
+        );
+      } else if (fam.id === 'grok') {
+        subModels.push(
+          { modelName: 'Grok 4.6 (Flagship Multimodal)', cost: 0, tokens: 0, standby: true },
+          { modelName: 'Grok 4 (Advanced Reasoning)', cost: 0, tokens: 0, standby: true },
+          { modelName: 'Grok 3 (Thinking / Code)', cost: 0, tokens: 0, standby: true }
+        );
+      }
+    }
+
     subModels.sort((a, b) => b.cost - a.cost);
 
     const totalCost = subModels.reduce((s, m) => s + m.cost, 0);
@@ -519,8 +652,11 @@ function renderModelRanking(timeline) {
       totalTokens,
       subModels
     };
-  }).filter(f => f.totalTokens > 0)
-    .sort((a, b) => b.totalCost - a.totalCost);
+  }).sort((a, b) => {
+    if (a.totalTokens > 0 && b.totalTokens === 0) return -1;
+    if (a.totalTokens === 0 && b.totalTokens > 0) return 1;
+    return b.totalCost - a.totalCost;
+  });
 
   document.getElementById('models-count').innerText = `${families.length} 大主要模型族`;
 

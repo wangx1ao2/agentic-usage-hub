@@ -207,6 +207,17 @@ function buildDashboardData(tier = 'standard', agentFilter = 'all') {
   // Ensure current calendar day is always present
   ensureDay(todayStr);
 
+  // If filtering for an agent with 0 historical records, ensure at least recent days exist
+  // so the chart renders a continuous timeline instead of a collapsed single-point graph
+  if (agentFilter === 'claude' || agentFilter === 'grok') {
+    const todayObj = new Date();
+    for (let i = 13; i >= 0; i--) {
+      const past = new Date(todayObj);
+      past.setDate(todayObj.getDate() - i);
+      ensureDay(getLocalDateStr(past));
+    }
+  }
+
   // 1. Process CLI Agent logs (Codex, Claude Code, Grok, etc.)
   for (const d of codexDaily) {
     let dayTotalCost = 0;
@@ -425,11 +436,18 @@ function buildDashboardData(tier = 'standard', agentFilter = 'all') {
     }
   }
 
+  const CORE_COMPANIES = ['OpenAI', 'Anthropic', 'xAI', 'Google (Gemini)', '智谱 AI (Z.ai)', 'DeepSeek'];
   const companiesList = Object.values(companyStats)
-    .filter(c => c.totalTokens > 0)
-    .sort((a, b) => b.totalCost - a.totalCost)
+    .filter(c => c.totalTokens > 0 || CORE_COMPANIES.includes(c.name))
+    .sort((a, b) => {
+      if (a.totalTokens > 0 && b.totalTokens === 0) return -1;
+      if (a.totalTokens === 0 && b.totalTokens > 0) return 1;
+      if (b.totalCost !== a.totalCost) return b.totalCost - a.totalCost;
+      return CORE_COMPANIES.indexOf(a.name) - CORE_COMPANIES.indexOf(b.name);
+    })
     .map(c => ({
       ...c,
+      status: c.totalTokens > 0 ? 'active' : 'standby',
       totalCost: +c.totalCost.toFixed(2),
       formattedCost: '$' + c.totalCost.toFixed(2),
       formattedTokens: (c.totalTokens / 1e6).toFixed(1) + 'M'

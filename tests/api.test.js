@@ -41,6 +41,12 @@ test('API Test Suite - Agentic Usage Hub', async (t) => {
     assert.ok(todayModels.length > 0, 'Today summary should contain active models');
     assert.ok(todayModels.includes('gpt-5.6-sol'), 'gpt-5.6-sol must be in todaySummary');
     assert.ok(todayModels.includes('Gemini 3.7 Flash'), 'Gemini 3.7 Flash must be in todaySummary');
+
+    // Verify companies array contains all 6 core companies
+    const compNames = data.companies.map(c => c.name);
+    ['OpenAI', 'Anthropic', 'xAI', 'Google (Gemini)', '智谱 AI (Z.ai)', 'DeepSeek'].forEach(c => {
+      assert.ok(compNames.includes(c), `Company ${c} must be in companies list`);
+    });
   });
 
   await t.test('2. GET /api/dashboard handles invalid tier and agent gracefully', async () => {
@@ -135,8 +141,12 @@ test('API Test Suite - Agentic Usage Hub', async (t) => {
     assert.ok(data.companies, 'companies map must exist');
     assert.ok(data.companies.Anthropic, 'Anthropic company config must exist');
     assert.ok(data.companies.xAI, 'xAI company config must exist');
+    assert.ok(data.models['claude-fable-5'], 'Claude Fable 5 must be cataloged');
+    assert.ok(data.models['grok-4.6'], 'Grok 4.6 must be cataloged');
     assert.ok(data.models['claude-3-7-sonnet'], 'Claude 3.7 Sonnet must be cataloged');
     assert.ok(data.models['grok-3'], 'Grok 3 must be cataloged');
+    assert.equal(data.models['claude-fable-5'].standard.in, 5.00);
+    assert.equal(data.models['grok-4.6'].standard.in, 4.00);
     assert.equal(data.models['claude-3-7-sonnet'].standard.in, 3.00);
     assert.equal(data.models['grok-3'].standard.in, 3.00);
   });
@@ -147,11 +157,13 @@ test('API Test Suite - Agentic Usage Hub', async (t) => {
     const dataClaude = await resClaude.json();
     assert.equal(dataClaude.meta.agentFilter, 'claude');
     assert.ok(Array.isArray(dataClaude.timeline));
+    assert.ok(dataClaude.timeline.length > 0, 'Claude timeline should span recent calendar days');
 
     const resGrok = await fetch(`${BASE_URL}/api/dashboard?agent=grok`);
     assert.equal(resGrok.status, 200);
     const dataGrok = await resGrok.json();
     assert.equal(dataGrok.meta.agentFilter, 'grok');
     assert.ok(Array.isArray(dataGrok.timeline));
+    assert.ok(dataGrok.timeline.length > 0, 'Grok timeline should span recent calendar days');
   });
 });
