@@ -5,15 +5,36 @@ node_modules/
 .env
 .env.local
 .env.*.local
+!.env.example
 
-# Local analysis caches
+# Local analysis caches & temporary files
 .cache/
+tmp/
+temp/
+*.tmp
+*.bak
+*.swp
+*.swo
+
+# Coverage & test output
+coverage/
+.nyc_output/
 
 # Logs
 *.log
+logs/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Python cache
+__pycache__/
+*.py[cod]
 
 # OS & Editor files
 .DS_Store

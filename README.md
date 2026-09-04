@@ -11,12 +11,12 @@
 在现代 AI 辅助研发工作中，开发者通常组合使用多种 Agent 编程助手（如 OpenAI Codex CLI、Claude Code、xAI Grok CLI、智谱 AI ZCode、Google Antigravity/Gemini、DeepSeek OpenClaw/Reasonix 以及 Codex 原生生图工具）。由于各工具的计费机制、缓存策略、日志存放路径及数据格式高度异构，传统工具往往难以提供全生命周期的统一视图。
 
 **Agentic Usage Hub** 是一套轻量、高性能、零第三方重框架依赖的本地全景监控面板：
-- **全面覆盖主流大模型计费**：内置针对 **Anthropic Claude**（3.7 Sonnet 混合推理、3.5 Sonnet、3.5 Haiku、Opus）、**xAI Grok**（Grok 3、Grok 2、Grok Beta）、**OpenAI**（GPT-5.6 系列、o3-mini、o1 系列、GPT-4o 系列）、**Google DeepMind**（Gemini 3.7 Flash、2.5 Pro/Flash）、**DeepSeek**（V4 Pro/Flash、R1 Reasoner、V3 Chat）、**智谱 AI**（GLM-5.3 旗舰版/Flash、GLM-5.2）以及阿里通义千问 Qwen 等的官方最新目录计费与 Prompt 缓存读取单价折算；
+- **全面覆盖主流大模型计费**：内置针对 **Anthropic Claude**（Claude Fable 5 智能体、Claude 4.5 系列、3.7 Sonnet 混合推理、3.5 Sonnet/Haiku、Opus）、**xAI Grok**（Grok 4.6 多模态/深度思考、Grok 4、Grok 3、Grok 2）、**OpenAI**（GPT-5.6 系列、o3-mini、o1 系列、GPT-4o 系列）、**Google DeepMind**（Gemini 3.7 Flash、2.5 Pro/Flash）、**DeepSeek**（V4 Pro/Flash、R1 Reasoner、V3 Chat）、**智谱 AI**（GLM-5.3 旗舰版/Flash、GLM-5.2）以及阿里通义千问 Qwen 等的官方最新目录计费与 Prompt 缓存读取单价折算；
 - **今日实时看板 (Today Live)**：跨厂商聚合今日大模型活跃吞吐与生图工具（`GPT-Image-2`）的实时构成；
-- **全景时间走势图 (Timeline & Chart.js)**：提供多厂商多维折线走势，支持对数坐标、自定义 Y 轴缩放、区间预设与明细表格检索；
+- **全景时间走势图 (Timeline & Chart.js)**：支持「🏢 按厂商大类」与「🧬 按核心模型」双维度自由切换，提供对数刻度、自定义 Y 轴缩放、区间预设与明细表格检索；
 - **本地工程归因 (Projects Attribution)**：自动提取各 Agent 会话所绑定的本地物理工作区与工程目录，按业务主题聚类归因（商业化、小说、电商、技术博客等）；
 - **生图资产 Studio 画廊**：增量检索 Codex 自动化生成的图片资产与 Prompt，支持灯箱大图预览；
-- **官方计费速查矩阵**：前端内置交互式主流大模型官方计费价目矩阵抽屉，支持模糊搜索与实时核对；
+- **官方计费速查矩阵**：前端内置交互式主流大模型官方计费价目矩阵抽屉，支持按模型名/厂商即时模糊搜索与实时费率核对；
 - **双主题自适应**：支持跟随系统（`prefers-color-scheme`）自适应切换，并提供一键手动控制（自动 / 浅色 / 深色）。
 
 ---
@@ -25,6 +25,7 @@
 
 ```text
 agentic-usage-hub/
+├── .github/workflows/ci.yml # GitHub Actions 持续集成自动化测试工作流
 ├── unified-server.js        # 核心 Node.js 原生 HTTP 服务与路由调度
 ├── models-pricing.js        # 统一模型定价矩阵、Fuzzy 模糊规整与厂商识别引擎
 ├── antigravity-adapter.js   # Google Antigravity / Gemini 3.7 Flash 本地日志解析适配器
@@ -79,7 +80,7 @@ npm start
 👉 **`http://localhost:4242`**
 
 ### 4. 运行自动化测试套件
-本项目包含覆盖核心 API、适配器计算、参数校验和路径安全防御的完整测试（共 23 项用例）：
+本项目包含覆盖核心 API、适配器计算、参数校验和路径安全防御的完整测试（共 25 项测试用例，100% 通过）：
 ```bash
 npm test
 ```
@@ -100,16 +101,26 @@ npm test
 
 ## 🛡️ 安全与健壮性设计
 
-1. **路径遍历防御 (Path Traversal Protection)**：
-   - `/api/codex-image` 仅允许读取合法生图目录（如 `.codex/generated_images`）下的图片文件，严禁通过 `../` 越界访问；
+1. **零外部网络泄露与无凭证依赖**：
+   - 本看板为纯本地运行的遥测聚合器，不依赖任何第三方线上上报服务器，绝不向外网发送任何代码或会话敏感信息；
+   - 无需在看板中配置任何 API Key 或密码即可启动。
+2. **路径遍历防御 (Path Traversal Protection)**：
+   - `/api/codex-image` 仅允许读取合法生图目录下的图片文件，严禁通过 `../` 越界访问；
    - 静态资源服务器强制限制在 `public/` 目录范围内，越界请求直接返回 `403 Forbidden`。
-2. **全局错误边界与兜底**：
+3. **全局错误边界与兜底**：
    - 服务端所有路由封装统一的 `try...catch`，避免任何单点异常使服务挂起；
    - 前端集成断网/服务异常全局提示条与“点击重试”机制；
    - 图像资源加载失败时自动应用轻量 SVG 占位图兜底。
-3. **多级高性能缓存**：
+4. **多级高性能缓存**：
    - 磁盘级增量时间戳比对缓存（避免重复全量读取数 GB 日志）；
    - 服务端 10s 内存响应缓存（削峰填谷，降低高频请求压力）。
+
+---
+
+## 🔍 已知范围与使用说明 (Scope & Limitations)
+
+- **只读分析**：本工具为只读遥测分析看板，不会修改您的任何 Agent 原始会话日志、SQLite 数据库或工程源代码；
+- **环境依赖**：各 Agent 历史数据的丰富程度取决于您本机已使用的编程助手（如未在本地运行过 Claude Code 或 Grok CLI，对应厂商的数据将显示为待使用状态，一旦运行将自动被检索聚合）。
 
 ---
 
