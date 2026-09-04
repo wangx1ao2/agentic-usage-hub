@@ -3,11 +3,18 @@
   "version": "1.0.0",
   "description": "Multi-agent token telemetry and usage analytics dashboard for AI coding agents (OpenAI Codex, 智谱 ZCode, Google Antigravity, DeepSeek OpenClaw/Reasonix).",
   "main": "unified-server.js",
+  "bin": {
+    "agentic-usage-hub": "./bin/agentic-usage-hub.js"
+  },
   "scripts": {
     "start": "node unified-server.js",
     "test": "node --test tests/**/*.test.js",
     "daily": "ccusage codex daily",
     "monthly": "ccusage codex monthly"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wangx1ao2/agentic-usage-hub.git"
   },
   "keywords": [
     "token",
@@ -15,13 +22,29 @@
     "dashboard",
     "telemetry",
     "codex",
+    "claude",
+    "grok",
     "zcode",
     "antigravity",
     "openclaw",
     "deepseek"
   ],
-  "author": "",
+  "author": "wangx1ao2",
   "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/wangx1ao2/agentic-usage-hub/issues"
+  },
+  "homepage": "https://github.com/wangx1ao2/agentic-usage-hub#readme",
+  "files": [
+    "bin",
+    "public",
+    "*.js",
+    ".env.example",
+    "LICENSE",
+    "README.md",
+    "README_EN.md",
+    "docs/images"
+  ],
   "type": "commonjs",
   "dependencies": {
     "ccusage": "^20.0.20",

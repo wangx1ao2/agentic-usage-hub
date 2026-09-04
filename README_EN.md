@@ -1,0 +1,200 @@
+# Agentic Usage Hub — Multi-Agent Token Telemetry & Analytics Dashboard
+
+<p align="center">
+  <b>Unified token metering, cost estimation, and local workspace attribution for OpenAI Codex · Anthropic Claude · xAI Grok · Zhipu ZCode · Google Antigravity · DeepSeek OpenClaw</b>
+</p>
+
+<p align="center">
+  <a href="README_EN.md"><b>English</b></a> | <a href="README.md"><b>简体中文</b></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/wangx1ao2/agentic-usage-hub/actions"><img src="https://img.shields.io/badge/tests-25%20passed-success.svg" alt="Tests"></a>
+  <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-%3E%3D20.0.0-blue.svg" alt="Node Version"></a>
+  <a href="https://www.npmjs.com/package/agentic-usage-hub"><img src="https://img.shields.io/badge/npx-agentic--usage--hub-orange.svg" alt="npx ready"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License: MIT"></a>
+</p>
+
+---
+
+## 📸 Screenshots & UI Preview
+
+<p align="center">
+  <b>Panoramic Timeline Dashboard</b><br>
+  <i>Dual-dimensional drilldown (by Provider or by Model), logarithmic scale support, and custom range analysis</i><br>
+  <img src="docs/images/dashboard-preview.png" alt="Dashboard Preview" width="95%">
+</p>
+
+<p align="center">
+  <b>Today Live Telemetry & Agent Composition</b><br>
+  <i>Cross-provider breakdown of active token throughput, cache hit rates, and image generation counts</i><br>
+  <img src="docs/images/today-dashboard-preview.png" alt="Today Live Preview" width="95%">
+</p>
+
+<p align="center">
+  <b>Interactive Official Pricing Matrix Drawer</b><br>
+  <i>Catalog of 6 major AI providers and 20+ frontier models (including Claude Fable 5, Grok 4.6, GPT-5.6) with fuzzy search</i><br>
+  <img src="docs/images/pricing-matrix-preview.png" alt="Pricing Matrix Drawer" width="95%">
+</p>
+
+---
+
+## 🌟 Key Features
+
+In modern AI-assisted software engineering, developers frequently combine multiple coding assistants (such as OpenAI Codex CLI, Claude Code, xAI Grok CLI, Zhipu AI ZCode, Google Antigravity/Gemini, and DeepSeek OpenClaw/Reasonix). Because each tool uses divergent log formats, cache hierarchies, and pricing rules, developers lack a single unified view of their actual consumption.
+
+**Agentic Usage Hub** is a lightweight, high-performance, zero-heavy-framework local telemetry dashboard:
+
+- **Extensive Frontier Model Coverage**: Built-in official catalog pricing and prompt cache discounts for:
+  - **Anthropic Claude**: Claude Fable 5 Agent, Claude 4.5 family, 3.7 Sonnet (Hybrid Reasoning), 3.5 Sonnet/Haiku, Opus
+  - **xAI Grok**: Grok 4.6 (Vision / Deep Reasoning), Grok 4, Grok 3, Grok 2
+  - **OpenAI**: GPT-5.6 family, o3-mini, o1 series, GPT-4o series
+  - **Google DeepMind**: Gemini 3.7 Flash, Gemini 2.5 Pro/Flash
+  - **DeepSeek**: DeepSeek V4 Pro/Flash, R1 Reasoner, V3 Chat
+  - **Zhipu AI**: GLM-5.3 Flagship/Flash, GLM-5.2
+  - **Alibaba Qwen**: Qwen-Max, Qwen-Plus, Qwen-Turbo
+- **Today Live Telemetry**: Aggregates real-time active token throughput across all providers alongside `GPT-Image-2` generation metrics;
+- **Interactive Panoramic Timeline (Chart.js)**: Switch seamlessly between **Provider View** (🏢) and **Core Model View** (🧬), featuring logarithmic scaling, customizable Y-axis, date presets, and tabular breakdowns;
+- **Local Project Attribution**: Automatically extracts and clusters physical directories and Git worktrees associated with each session;
+- **Codex Image Studio**: Incrementally indexes locally generated assets, prompts, and timestamps with lightbox preview;
+- **Built-in Official Pricing Matrix**: Slide-out drawer with instant fuzzy search to inspect input, cached input, and output tariffs per million tokens;
+- **Adaptive Dual Theme**: Automatically synchronizes with system dark/light preferences (`prefers-color-scheme`) with one-click manual override (Auto / Light / Dark).
+
+---
+
+## 🏗️ Architecture & Directory Structure
+
+```text
+agentic-usage-hub/
+├── .github/workflows/ci.yml # GitHub Actions continuous integration workflow
+├── bin/                     # Global CLI executable (npx agentic-usage-hub)
+│   └── agentic-usage-hub.js
+├── docs/                    # High-resolution screenshots and documentation
+│   └── images/
+├── unified-server.js        # Core native Node.js HTTP server and router
+├── models-pricing.js        # Unified model pricing matrix, fuzzy matching, and provider resolver
+├── antigravity-adapter.js   # Google Antigravity / Gemini 3.7 Flash log adapter
+├── codex-image-adapter.js   # Codex GPT-Image-2 asset indexing and prompt parser
+├── openclaw-adapter.js      # DeepSeek / Claude / Grok (OpenClaw / Reasonix) trajectory parser
+├── project-adapter.js       # Local workspace clustering and attribution engine
+├── zcode-adapter.js         # Zhipu AI (Z.ai) SQLite reader and dual-pricing estimator
+├── .env.example             # Environment variable configuration template
+├── .gitignore               # Standard Git ignore rules
+├── package.json             # Package metadata and npm scripts
+├── public/                  # Frontend SPA (Vanilla JS + Glassmorphism CSS)
+│   ├── index.html           # SPA container
+│   ├── app.js               # Reactive UI state, charts, and API client
+│   ├── styles.css           # Design tokens, CSS variables, and layout
+│   └── chart.umd.js         # Vendored Chart.js library
+└── tests/                   # Automated integration and unit test suite
+    ├── api.test.js          # REST API endpoints, validation, and security test cases
+    └── adapters.test.js     # Provider adapters, pricing calculations, and parsing tests
+```
+
+---
+
+## 🚀 Quick Start
+
+### Method 1: Instant Launch with npx (Recommended ⚡)
+
+No need to clone the repository. If you have Node.js (v20+) installed, simply run:
+
+```bash
+# Launch dashboard on default port 4242
+npx agentic-usage-hub
+
+# Or specify a custom port and automatically open default browser
+npx agentic-usage-hub -p 4242 -o
+```
+
+Once running, open: 👉 **`http://localhost:4242`**
+
+---
+
+### Method 2: Git Clone & Source Run
+
+```bash
+# 1. Clone repository
+git clone https://github.com/wangx1ao2/agentic-usage-hub.git
+cd agentic-usage-hub
+
+# 2. Install dependencies
+npm install
+
+# 3. Start unified dashboard server
+npm start
+```
+
+---
+
+### CLI Flags & Options
+
+| Option | Shorthand | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `--port <port>` | `-p` | `4242` or `$PORT` | Custom HTTP server listening port |
+| `--open` | `-o` | `false` | Automatically launch default browser upon server ready |
+| `--version` | `-v` | - | Print current version number |
+| `--help` | `-h` | - | Display CLI usage manual and options list |
+
+---
+
+### Environment Configuration (Optional)
+
+The dashboard works out-of-the-box with default user directory log paths. To customize paths or ports:
+
+```bash
+cp .env.example .env
+```
+
+Available variables:
+- `PORT`: HTTP server port (default: `4242`)
+- `CODEX_IMAGE_DIRS`: Comma-separated list of custom Codex image directories (optional)
+- `OPENCLAW_SESSIONS_DIR`: Custom OpenClaw session storage directory (optional)
+- `REASONIX_USAGE_FILE`: Custom Reasonix telemetry log path (optional)
+
+---
+
+### Running Automated Tests
+
+The repository includes an automated test suite covering all REST endpoints, adapter computations, input validation, and path traversal security guards (25/25 passing):
+
+```bash
+npm test
+```
+
+---
+
+## 📡 REST API Reference
+
+| Endpoint | Method | Description | Parameters |
+| :--- | :--- | :--- | :--- |
+| `/api/dashboard` | `GET` | Retrieve complete aggregated telemetry data | `tier`: `standard` \| `flagship`<br>`agent`: `all` \| `codex` \| `claude` \| `grok` \| `zcode` \| `antigravity` \| `openclaw` |
+| `/api/models-pricing` | `GET` | Retrieve built-in model catalog, price rates, and brand colors | None |
+| `/api/projects` | `GET` | Retrieve workspace directory clustering and attribution | None |
+| `/api/refresh` | `GET` | Invalidate server cache and re-read logs immediately | None |
+| `/api/codex-image` | `GET` | Securely stream a local image generated by Codex | `path`: Absolute image file path (safeguarded against traversal) |
+
+---
+
+## 🛡️ Security & Privacy Principles
+
+1. **100% Local & Offline First**:
+   - Agentic Usage Hub runs entirely on your local machine.
+   - It never transmits your prompts, code, project names, or telemetry data to any remote third-party service.
+   - Zero API keys, passwords, or cloud credentials are required.
+2. **Path Traversal Protection**:
+   - The `/api/codex-image` endpoint restricts file access strictly to validated image directories; paths containing `..` or non-whitelisted extensions are blocked with `403 Forbidden`.
+   - Static assets are locked to the `public/` directory.
+3. **Robust Error Boundaries**:
+   - Server endpoints wrap all file I/O and JSON parsing in try-catch guards to prevent unhandled process crashes.
+   - The frontend includes offline/network failure banners with one-click retry.
+   - Missing or corrupted image files automatically fallback to an inline SVG placeholder.
+4. **High-Performance Caching**:
+   - Disk mtime timestamp checks skip re-parsing unmutated multi-megabyte log files.
+   - An in-memory 10-second response cache eliminates CPU spikes during frequent dashboard reloads.
+
+---
+
+## 📄 License
+
+This project is licensed under the [MIT License](LICENSE).
