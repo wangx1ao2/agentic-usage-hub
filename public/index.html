@@ -56,12 +56,15 @@
           </button>
         </div>
 
-        <!-- ZCode Pricing Mode Toggle -->
         <div class="toggle-group" title="切换 ZCode 模型的折算计费标准">
           <span class="toggle-label">ZCode 定价:</span>
           <button id="tier-standard" class="btn-toggle active" onclick="setPricingTier('standard')">官方标准目录价</button>
           <button id="tier-flagship" class="btn-toggle" onclick="setPricingTier('flagship')">旗舰模型折算价</button>
         </div>
+
+        <button id="btn-pricing-matrix" class="btn-toggle" onclick="togglePricingModal()" title="查看 Claude、Grok、GPT、Gemini、GLM 等主流模型官方计费价目标准">
+          💎 模型计费速查
+        </button>
 
         <div class="refresh-container">
           <button id="btn-refresh" class="btn-primary" onclick="refreshData()">
@@ -126,7 +129,7 @@
             <span class="today-date-tag" id="today-date-badge">📅 正在获取今日日期...</span>
           </div>
           <h2 class="today-title">今日智能体与大模型消耗实时总览</h2>
-          <p class="today-subtitle">聚合今日 OpenAI Codex、Google Gemini、智谱 ZCode 与 GPT-Image-2 图像生成全量活跃实录</p>
+          <p class="today-subtitle">聚合今日 OpenAI Codex、Claude Code、xAI Grok、Google Gemini、智谱 ZCode、DeepSeek 与图像生成全量活跃实录</p>
         </div>
         <div class="today-quick-actions">
           <button class="btn-primary btn-sm" onclick="refreshData()">
@@ -227,11 +230,20 @@
           <button class="agent-tab" data-agent="codex" onclick="setAgentFilter('codex')">
             <span class="tab-dot dot-codex"></span> Codex (OpenAI)
           </button>
+          <button class="agent-tab" data-agent="claude" onclick="setAgentFilter('claude')">
+            <span class="tab-dot dot-claude"></span> Claude (Anthropic)
+          </button>
+          <button class="agent-tab" data-agent="grok" onclick="setAgentFilter('grok')">
+            <span class="tab-dot dot-grok"></span> Grok (xAI)
+          </button>
           <button class="agent-tab" data-agent="zcode" onclick="setAgentFilter('zcode')">
             <span class="tab-dot dot-zcode"></span> ZCode (智谱GLM)
           </button>
           <button class="agent-tab" data-agent="antigravity" onclick="setAgentFilter('antigravity')">
-            <span class="tab-dot dot-agy"></span> Antigravity (Google Gemini)
+            <span class="tab-dot dot-agy"></span> Antigravity (Gemini)
+          </button>
+          <button class="agent-tab" data-agent="openclaw" onclick="setAgentFilter('openclaw')">
+            <span class="tab-dot dot-openclaw"></span> OpenClaw (DeepSeek/多元)
           </button>
         </div>
 
@@ -579,6 +591,44 @@
 
       <div class="gallery-grid" id="gallery-grid">
         <!-- Dynamically filled with thumbnails -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Model Pricing Matrix Modal -->
+  <div id="pricing-modal" class="pricing-modal-overlay" style="display: none;" onclick="if(event.target===this) togglePricingModal()">
+    <div class="pricing-modal-card">
+      <div class="pricing-modal-header">
+        <div class="pricing-modal-title">
+          <span class="pricing-modal-icon">💎</span>
+          <div>
+            <h3>主流大模型官方计费矩阵 (USD / 1M Tokens)</h3>
+            <p>包含 Anthropic Claude、xAI Grok、OpenAI GPT、Google DeepMind Gemini、智谱 GLM、DeepSeek、Qwen 等实时口径</p>
+          </div>
+        </div>
+        <button class="btn-close-modal" onclick="togglePricingModal()">✕</button>
+      </div>
+      <div class="pricing-modal-body">
+        <div class="pricing-search-bar">
+          <input type="text" id="pricing-search-input" placeholder="输入模型名称或厂商搜索（例如 claude, grok, glm, 3.7, qwen）..." oninput="filterPricingTable()">
+        </div>
+        <div class="pricing-table-wrap">
+          <table class="pricing-table">
+            <thead>
+              <tr>
+                <th>厂商 (Provider)</th>
+                <th>核心模型 (Model)</th>
+                <th>输入价 (Input / 1M)</th>
+                <th>输出价 (Output / 1M)</th>
+                <th>缓存读取 (Cache / 1M)</th>
+                <th>推荐 Agent</th>
+              </tr>
+            </thead>
+            <tbody id="pricing-table-body">
+              <!-- Dynamically populated from /api/models-pricing -->
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>

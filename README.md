@@ -1,21 +1,22 @@
 # Agentic Usage Hub — 多智能体统一计量与可视化看板
 
 <p align="center">
-  <b>面向 OpenAI Codex · 智谱 ZCode · Google Antigravity · DeepSeek 全生态 AI 编程智能体的统一 Token 计量、成本折算与本地工程归因看板</b>
+  <b>面向 OpenAI Codex · Anthropic Claude · xAI Grok · 智谱 ZCode · Google Antigravity · DeepSeek 全生态 AI 编程智能体的统一 Token 计量、成本折算与本地工程归因看板</b>
 </p>
 
 ---
 
 ## 🌟 项目简介
 
-在现代 AI 辅助研发工作中，开发者通常组合使用多种 Agent 编程助手（如 OpenAI Codex CLI、智谱 AI ZCode、Google Antigravity/Gemini、DeepSeek OpenClaw/Reasonix 以及 Codex 原生生图工具）。由于各工具的计费机制、缓存策略、日志存放路径及数据格式高度异构，传统工具往往难以提供全生命周期的统一视图。
+在现代 AI 辅助研发工作中，开发者通常组合使用多种 Agent 编程助手（如 OpenAI Codex CLI、Claude Code、xAI Grok CLI、智谱 AI ZCode、Google Antigravity/Gemini、DeepSeek OpenClaw/Reasonix 以及 Codex 原生生图工具）。由于各工具的计费机制、缓存策略、日志存放路径及数据格式高度异构，传统工具往往难以提供全生命周期的统一视图。
 
 **Agentic Usage Hub** 是一套轻量、高性能、零第三方重框架依赖的本地全景监控面板：
-- **统一 Token 吞吐与成本折算**：聚合输入 Tokens、输出 Tokens、Prompt 缓存命中，按照官方标准目录价与旗舰阶梯折算为统一 USD 美元口径；
-- **今日实时看板 (Today Live)**：独立跨厂商聚合今日大模型（如 `gpt-5.6-sol`、`Gemini 3.7 Flash`）与生图工具（`GPT-Image-2`）的实时吞吐与阵营构成；
-- **全景时间走势图 (Timeline & Chart.js)**：提供 4 大厂商多维折线走势，支持对数坐标、自定义 Y 轴缩放、区间预设与明细表格检索；
+- **全面覆盖主流大模型计费**：内置针对 **Anthropic Claude**（3.7 Sonnet 混合推理、3.5 Sonnet、3.5 Haiku、Opus）、**xAI Grok**（Grok 3、Grok 2、Grok Beta）、**OpenAI**（GPT-5.6 系列、o3-mini、o1 系列、GPT-4o 系列）、**Google DeepMind**（Gemini 3.7 Flash、2.5 Pro/Flash）、**DeepSeek**（V4 Pro/Flash、R1 Reasoner、V3 Chat）、**智谱 AI**（GLM-5.3 旗舰版/Flash、GLM-5.2）以及阿里通义千问 Qwen 等的官方最新目录计费与 Prompt 缓存读取单价折算；
+- **今日实时看板 (Today Live)**：跨厂商聚合今日大模型活跃吞吐与生图工具（`GPT-Image-2`）的实时构成；
+- **全景时间走势图 (Timeline & Chart.js)**：提供多厂商多维折线走势，支持对数坐标、自定义 Y 轴缩放、区间预设与明细表格检索；
 - **本地工程归因 (Projects Attribution)**：自动提取各 Agent 会话所绑定的本地物理工作区与工程目录，按业务主题聚类归因（商业化、小说、电商、技术博客等）；
 - **生图资产 Studio 画廊**：增量检索 Codex 自动化生成的图片资产与 Prompt，支持灯箱大图预览；
+- **官方计费速查矩阵**：前端内置交互式主流大模型官方计费价目矩阵抽屉，支持模糊搜索与实时核对；
 - **双主题自适应**：支持跟随系统（`prefers-color-scheme`）自适应切换，并提供一键手动控制（自动 / 浅色 / 深色）。
 
 ---
@@ -25,9 +26,10 @@
 ```text
 agentic-usage-hub/
 ├── unified-server.js        # 核心 Node.js 原生 HTTP 服务与路由调度
+├── models-pricing.js        # 统一模型定价矩阵、Fuzzy 模糊规整与厂商识别引擎
 ├── antigravity-adapter.js   # Google Antigravity / Gemini 3.7 Flash 本地日志解析适配器
 ├── codex-image-adapter.js   # Codex GPT-Image-2 生图资产增量索引与 Prompt 提取
-├── openclaw-adapter.js      # DeepSeek (OpenClaw / Reasonix) 历史轨迹调用解析
+├── openclaw-adapter.js      # DeepSeek / Claude / Grok (OpenClaw / Reasonix) 历史轨迹调用解析
 ├── project-adapter.js       # 本地物理工程与工作区智能聚类归因
 ├── zcode-adapter.js         # 智谱 AI (Z.ai) SQLite 数据库直读与双计费定价计算
 ├── .env.example             # 环境变量配置模板
@@ -77,7 +79,7 @@ npm start
 👉 **`http://localhost:4242`**
 
 ### 4. 运行自动化测试套件
-本项目包含覆盖核心 API、适配器计算、参数校验和路径安全防御的完整测试：
+本项目包含覆盖核心 API、适配器计算、参数校验和路径安全防御的完整测试（共 23 项用例）：
 ```bash
 npm test
 ```
@@ -88,7 +90,8 @@ npm test
 
 | 路径 | 方法 | 说明 | 关键参数 |
 | :--- | :--- | :--- | :--- |
-| `/api/dashboard` | `GET` | 获取看板全量聚合数据 | `tier`: `standard` \| `flagship`<br>`agent`: `all` \| `codex` \| `zcode` \| `antigravity` \| `openclaw` |
+| `/api/dashboard` | `GET` | 获取看板全量聚合数据 | `tier`: `standard` \| `flagship`<br>`agent`: `all` \| `codex` \| `claude` \| `grok` \| `zcode` \| `antigravity` \| `openclaw` |
+| `/api/models-pricing` | `GET` | 获取系统内置的全量模型官方价目矩阵与厂商色彩配置 | 无 |
 | `/api/projects` | `GET` | 获取归因分析后的本地工程列表 | 无 |
 | `/api/refresh` | `GET` | 强制穿透刷新并清除服务端缓存 | 无 |
 | `/api/codex-image` | `GET` | 安全读取 Codex 本地生成的图片 | `path`: 本地图片绝对路径（已做安全目录与扩展名强校验） |

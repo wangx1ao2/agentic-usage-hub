@@ -126,4 +126,32 @@ test('API Test Suite - Agentic Usage Hub', async (t) => {
     const resAttack2 = await fetch(`${BASE_URL}/api/codex-image?path=${encodeURIComponent(require('path').join(require('os').homedir(), '.codex', 'generated_images', 'evil.bat'))}`);
     assert.equal(resAttack2.status, 404);
   });
+
+  await t.test('10. GET /api/models-pricing returns comprehensive catalog', async () => {
+    const res = await fetch(`${BASE_URL}/api/models-pricing`);
+    assert.equal(res.status, 200);
+    const data = await res.json();
+    assert.equal(data.status, 'ok');
+    assert.ok(data.companies, 'companies map must exist');
+    assert.ok(data.companies.Anthropic, 'Anthropic company config must exist');
+    assert.ok(data.companies.xAI, 'xAI company config must exist');
+    assert.ok(data.models['claude-3-7-sonnet'], 'Claude 3.7 Sonnet must be cataloged');
+    assert.ok(data.models['grok-3'], 'Grok 3 must be cataloged');
+    assert.equal(data.models['claude-3-7-sonnet'].standard.in, 3.00);
+    assert.equal(data.models['grok-3'].standard.in, 3.00);
+  });
+
+  await t.test('11. GET /api/dashboard supports agent=claude and agent=grok filters', async () => {
+    const resClaude = await fetch(`${BASE_URL}/api/dashboard?agent=claude`);
+    assert.equal(resClaude.status, 200);
+    const dataClaude = await resClaude.json();
+    assert.equal(dataClaude.meta.agentFilter, 'claude');
+    assert.ok(Array.isArray(dataClaude.timeline));
+
+    const resGrok = await fetch(`${BASE_URL}/api/dashboard?agent=grok`);
+    assert.equal(resGrok.status, 200);
+    const dataGrok = await resGrok.json();
+    assert.equal(dataGrok.meta.agentFilter, 'grok');
+    assert.ok(Array.isArray(dataGrok.timeline));
+  });
 });

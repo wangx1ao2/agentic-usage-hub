@@ -1,11 +1,12 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { resolveModelInfo, calculateModelCost } = require('./models-pricing');
 
 function getOpenClawAndReasonixDaily() {
   const dailyMap = {};
 
-  function addUsage(dateStr, tokens, inputTokens, outputTokens, cacheReadTokens, cost, modelName, agentSource) {
+  function addUsage(dateStr, tokens, inputTokens, outputTokens, cacheReadTokens, cost, rawModelName, agentSource) {
     if (!dailyMap[dateStr]) {
       dailyMap[dateStr] = {
         date: dateStr,
@@ -18,19 +19,29 @@ function getOpenClawAndReasonixDaily() {
         modelBreakdowns: {}
       };
     }
+
+    const modelInfo = resolveModelInfo(rawModelName, agentSource);
+    const modelLabel = `${modelInfo.canonicalName} (${agentSource === 'reasonix' ? 'Reasonix' : 'OpenClaw'})`;
+
+    let effectiveCost = cost;
+    if (!effectiveCost || effectiveCost <= 0) {
+      effectiveCost = calculateModelCost(modelInfo.canonicalName, inputTokens, outputTokens, cacheReadTokens);
+    }
+
     const d = dailyMap[dateStr];
     d.totalTokens += tokens;
     d.inputTokens += inputTokens;
     d.outputTokens += outputTokens;
     d.cacheReadTokens += cacheReadTokens;
-    d.totalCost += cost;
-    d.modelsUsed.add(modelName);
+    d.totalCost += effectiveCost;
+    d.modelsUsed.add(modelLabel);
 
-    if (!d.modelBreakdowns[modelName]) {
-      d.modelBreakdowns[modelName] = {
-        modelName,
+    if (!d.modelBreakdowns[modelLabel]) {
+      d.modelBreakdowns[modelLabel] = {
+        modelName: modelLabel,
+        rawModel: rawModelName,
         agent: agentSource,
-        company: 'DeepSeek',
+        company: modelInfo.company,
         inputTokens: 0,
         outputTokens: 0,
         cacheReadTokens: 0,
@@ -38,12 +49,12 @@ function getOpenClawAndReasonixDaily() {
         cost: 0
       };
     }
-    const mb = d.modelBreakdowns[modelName];
+    const mb = d.modelBreakdowns[modelLabel];
     mb.inputTokens += inputTokens;
     mb.outputTokens += outputTokens;
     mb.cacheReadTokens += cacheReadTokens;
     mb.totalTokens += tokens;
-    mb.cost += cost;
+    mb.cost += effectiveCost;
   }
 
   // 1. Parse OpenClaw trajectories
@@ -94,8 +105,7 @@ function getOpenClawAndReasonixDaily() {
                   const dObj = new Date(ts < 1e11 ? ts * 1000 : ts);
                   const dateStr = dObj.toISOString().slice(0, 10);
                   const model = item.model || obj.modelId || 'deepseek-v4-flash';
-                  const modelLabel = `${model} (OpenClaw)`;
-                  addUsage(dateStr, tot, inp, out, cache, cost, modelLabel, 'openclaw');
+                  addUsage(dateStr, tot, inp, out, cache, cost, model, 'openclaw');
                 }
               }
             }
@@ -124,10 +134,9 @@ function getOpenClawAndReasonixDaily() {
           const cache = item.cacheHitTokens || 0;
           const cost = item.costUsd || 0;
           const model = item.model || 'deepseek-v4-flash';
-          const modelLabel = `${model} (Reasonix)`;
           if (ts && tot > 0) {
             const dateStr = new Date(ts < 1e11 ? ts * 1000 : ts).toISOString().slice(0, 10);
-            addUsage(dateStr, tot, inp, out, cache, cost, modelLabel, 'reasonix');
+            addUsage(dateStr, tot, inp, out, cache, cost, model, 'reasonix');
           }
         } catch (e) {}
       }

@@ -2,32 +2,14 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { DatabaseSync } = require('node:sqlite');
-
-// Pricing reference for calculating USD from tokens
-const MODEL_PRICES = {
-  // OpenAI
-  'gpt-5.5': { in: 2.50, out: 10.00, cache: 1.25 },
-  'gpt-5.6-sol': { in: 1.75, out: 14.00, cache: 0.53375 },
-  'gpt-5.6-terra': { in: 0.75, out: 6.00, cache: 0.375 },
-  'gpt-5.6-luna': { in: 0.25, out: 2.00, cache: 0.125 },
-  'gpt-5.4': { in: 2.50, out: 10.00, cache: 1.25 },
-  'gpt-5.4-mini': { in: 0.15, out: 0.60, cache: 0.075 },
-  // ZCode / GLM
-  'GLM-5.3-Flash': { in: 0.15, out: 0.50, cache: 0.03 },
-  'GLM-5.3': { in: 1.00, out: 3.00, cache: 0.20 },
-  'GLM-5.2': { in: 0.80, out: 2.50, cache: 0.15 },
-  // DeepSeek
-  'deepseek-v4-flash': { in: 0.14, out: 0.28, cache: 0.028 },
-  'deepseek-v4-pro': { in: 0.55, out: 2.19, cache: 0.14 }
-};
+const { COMPANY_CONFIG, resolveModelInfo, calculateModelCost } = require('./models-pricing');
 
 function estCost(model, tokens, cacheTokens = 0) {
-  const p = MODEL_PRICES[model] || MODEL_PRICES['gpt-5.5'];
   const fresh = Math.max(0, tokens - cacheTokens);
-  // Estimate 85% input, 15% output for agent interactive loops
+  // Estimate 85% input, 15% output for typical agent interactive loops
   const inTok = fresh * 0.85;
   const outTok = fresh * 0.15;
-  return (inTok * p.in + (cacheTokens * p.cache) + (outTok * p.out)) / 1e6;
+  return calculateModelCost(model, inTok, outTok, cacheTokens);
 }
 
 // Canonical project mapper
@@ -128,6 +110,8 @@ function getProjectAttributionList() {
         agents: new Set(),
         companies: {
           'OpenAI': { tokens: 0, cost: 0, color: '#3b82f6' },
+          'Anthropic': { tokens: 0, cost: 0, color: '#d97706' },
+          'xAI': { tokens: 0, cost: 0, color: '#8b5cf6' },
           '智谱 AI (Z.ai)': { tokens: 0, cost: 0, color: '#10b981' },
           'Google (Gemini)': { tokens: 0, cost: 0, color: '#06b6d4' },
           'DeepSeek': { tokens: 0, cost: 0, color: '#f43f5e' }
@@ -293,14 +277,19 @@ function getProjectAttributionList() {
                   const out = u.output_tokens || 0;
                   const cache = u.cache_read_input_tokens || 0;
                   const tok = inp + out + cache;
-                  const cost = (inp * 0.14 + cache * 0.028 + out * 0.28) / 1e6;
+                  const rawModel = item.model || item.message?.model || 'claude-3-5-sonnet';
+                  const info = resolveModelInfo(rawModel, 'claude');
+                  const cost = calculateModelCost(info.canonicalName, inp, out, cache);
 
                   p.totalTokens += tok;
                   p.cacheTokens += cache;
                   p.totalCost += cost;
-                  p.companies['DeepSeek'].tokens += tok;
-                  p.companies['DeepSeek'].cost += cost;
-                  p.models['deepseek-v4-flash'] = (p.models['deepseek-v4-flash'] || 0) + tok;
+                  if (!p.companies[info.company]) {
+                    p.companies[info.company] = { tokens: 0, cost: 0, color: COMPANY_CONFIG[info.company]?.color || '#d97706' };
+                  }
+                  p.companies[info.company].tokens += tok;
+                  p.companies[info.company].cost += cost;
+                  p.models[info.canonicalName] = (p.models[info.canonicalName] || 0) + tok;
                 }
               } catch (e) {}
             }
@@ -354,24 +343,34 @@ function getProjectAttributionList() {
         agents: Array.from(p.agents),
         companies: {
           openai: {
-            tokens: p.companies['OpenAI'].tokens,
-            cost: +p.companies['OpenAI'].cost.toFixed(2),
-            percent: p.totalTokens > 0 ? +((p.companies['OpenAI'].tokens / p.totalTokens) * 100).toFixed(1) : 0
+            tokens: p.companies['OpenAI']?.tokens || 0,
+            cost: +(p.companies['OpenAI']?.cost || 0).toFixed(2),
+            percent: p.totalTokens > 0 ? +(((p.companies['OpenAI']?.tokens || 0) / p.totalTokens) * 100).toFixed(1) : 0
+          },
+          anthropic: {
+            tokens: p.companies['Anthropic']?.tokens || 0,
+            cost: +(p.companies['Anthropic']?.cost || 0).toFixed(2),
+            percent: p.totalTokens > 0 ? +(((p.companies['Anthropic']?.tokens || 0) / p.totalTokens) * 100).toFixed(1) : 0
+          },
+          xai: {
+            tokens: p.companies['xAI']?.tokens || 0,
+            cost: +(p.companies['xAI']?.cost || 0).toFixed(2),
+            percent: p.totalTokens > 0 ? +(((p.companies['xAI']?.tokens || 0) / p.totalTokens) * 100).toFixed(1) : 0
           },
           zcode: {
-            tokens: p.companies['智谱 AI (Z.ai)'].tokens,
-            cost: +p.companies['智谱 AI (Z.ai)'].cost.toFixed(2),
-            percent: p.totalTokens > 0 ? +((p.companies['智谱 AI (Z.ai)'].tokens / p.totalTokens) * 100).toFixed(1) : 0
+            tokens: p.companies['智谱 AI (Z.ai)']?.tokens || 0,
+            cost: +(p.companies['智谱 AI (Z.ai)']?.cost || 0).toFixed(2),
+            percent: p.totalTokens > 0 ? +(((p.companies['智谱 AI (Z.ai)']?.tokens || 0) / p.totalTokens) * 100).toFixed(1) : 0
           },
           deepseek: {
-            tokens: p.companies['DeepSeek'].tokens,
-            cost: +p.companies['DeepSeek'].cost.toFixed(2),
-            percent: p.totalTokens > 0 ? +((p.companies['DeepSeek'].tokens / p.totalTokens) * 100).toFixed(1) : 0
+            tokens: p.companies['DeepSeek']?.tokens || 0,
+            cost: +(p.companies['DeepSeek']?.cost || 0).toFixed(2),
+            percent: p.totalTokens > 0 ? +(((p.companies['DeepSeek']?.tokens || 0) / p.totalTokens) * 100).toFixed(1) : 0
           },
           gemini: {
-            tokens: p.companies['Google (Gemini)'].tokens,
-            cost: +p.companies['Google (Gemini)'].cost.toFixed(2),
-            percent: p.totalTokens > 0 ? +((p.companies['Google (Gemini)'].tokens / p.totalTokens) * 100).toFixed(1) : 0
+            tokens: p.companies['Google (Gemini)']?.tokens || 0,
+            cost: +(p.companies['Google (Gemini)']?.cost || 0).toFixed(2),
+            percent: p.totalTokens > 0 ? +(((p.companies['Google (Gemini)']?.tokens || 0) / p.totalTokens) * 100).toFixed(1) : 0
           }
         },
         topModels: topModelEntries,

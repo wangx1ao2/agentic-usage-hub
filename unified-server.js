@@ -47,14 +47,14 @@ function getCodexData(force = false) {
   }
   try {
     const cliPath = path.join(__dirname, 'node_modules', 'ccusage', 'src', 'cli.js');
-    // First try 'codex daily --json' for exact native Codex SQLite tokens & models
-    let res = spawnSync(process.execPath, [cliPath, 'codex', 'daily', '--json'], {
+    // First try 'daily --json' to collect all supported CLI agents (Codex, Claude Code, Grok, etc.)
+    let res = spawnSync(process.execPath, [cliPath, 'daily', '--json'], {
       timeout: 30000,
       env: { ...process.env, NO_COLOR: '1' }
     });
-    // Fallback to general 'daily --json' if needed
+    // Fallback to 'codex daily --json' if needed
     if (res.status !== 0 || !res.stdout || res.stdout.length === 0) {
-      res = spawnSync(process.execPath, [cliPath, 'daily', '--json'], {
+      res = spawnSync(process.execPath, [cliPath, 'codex', 'daily', '--json'], {
         timeout: 30000,
         env: { ...process.env, NO_COLOR: '1' }
       });
@@ -73,29 +73,10 @@ function getCodexData(force = false) {
   return codexCache || { daily: [], totals: {} };
 }
 
-// Company Colors & Grouping
-const COMPANY_CONFIG = {
-  'OpenAI': { color: '#3b82f6', label: 'OpenAI (Codex / GPT)' },
-  '智谱 AI (Z.ai)': { color: '#10b981', label: '智谱 AI (GLM-5.3)' },
-  'Google (Gemini)': { color: '#06b6d4', label: 'Google DeepMind (Gemini)' },
-  'DeepSeek': { color: '#f43f5e', label: 'DeepSeek' }
-};
+const { COMPANY_CONFIG, MODEL_CATALOG, resolveModelInfo, calculateModelCost } = require('./models-pricing');
 
 function getCompany(modelName, agent) {
-  const m = (modelName || '').toLowerCase();
-  if (m.includes('glm') || (agent === 'zcode' && !m.includes('gpt'))) {
-    return '智谱 AI (Z.ai)';
-  }
-  if (m.includes('gemini') || agent === 'antigravity') {
-    return 'Google (Gemini)';
-  }
-  if (m.includes('deepseek')) {
-    return 'DeepSeek';
-  }
-  if (m.includes('gpt') || agent === 'codex') {
-    return 'OpenAI';
-  }
-  return 'OpenAI';
+  return resolveModelInfo(modelName, agent).company;
 }
 
 function buildDashboardData(tier = 'standard', agentFilter = 'all') {
@@ -113,16 +94,20 @@ function buildDashboardData(tier = 'standard', agentFilter = 'all') {
 
     // Format A: modelBreakdowns array (from ccusage daily --json)
     if (Array.isArray(d.modelBreakdowns) && d.modelBreakdowns.length > 0) {
-      breakdowns = d.modelBreakdowns.map(b => ({
-        modelName: b.modelName || 'gpt-5.6-sol',
-        agent: 'codex',
-        company: getCompany(b.modelName || 'gpt-5.6-sol', 'codex'),
-        inputTokens: b.inputTokens || 0,
-        outputTokens: b.outputTokens || 0,
-        cacheReadTokens: b.cacheReadTokens || 0,
-        totalTokens: b.totalTokens || ((b.inputTokens || 0) + (b.outputTokens || 0) + (b.cacheReadTokens || 0)),
-        cost: +(b.cost || b.costUSD || 0)
-      }));
+      breakdowns = d.modelBreakdowns.map(b => {
+        const mName = b.modelName || 'gpt-5.6-sol';
+        const info = resolveModelInfo(mName, 'codex');
+        return {
+          modelName: mName,
+          agent: info.agent || 'codex',
+          company: info.company,
+          inputTokens: b.inputTokens || 0,
+          outputTokens: b.outputTokens || 0,
+          cacheReadTokens: b.cacheReadTokens || 0,
+          totalTokens: b.totalTokens || ((b.inputTokens || 0) + (b.outputTokens || 0) + (b.cacheReadTokens || 0)),
+          cost: +(b.cost || b.costUSD || 0)
+        };
+      });
     }
     // Format B: models map (from ccusage codex daily --json)
     else if (d.models && typeof d.models === 'object' && Object.keys(d.models).length > 0) {
@@ -136,10 +121,11 @@ function buildDashboardData(tier = 'standard', agentFilter = 'all') {
           mCost = modelKeys.length === 1 ? dayTotalCost : (dayTotalCost * (mTokens / totalAllTokens));
         }
 
+        const info = resolveModelInfo(mName, 'codex');
         breakdowns.push({
           modelName: mName,
-          agent: 'codex',
-          company: getCompany(mName, 'codex'),
+          agent: info.agent || 'codex',
+          company: info.company,
           inputTokens: mInfo.inputTokens || 0,
           outputTokens: mInfo.outputTokens || 0,
           cacheReadTokens: mInfo.cacheReadTokens || 0,
@@ -153,10 +139,11 @@ function buildDashboardData(tier = 'standard', agentFilter = 'all') {
       const perModelCost = +(dayTotalCost / d.modelsUsed.length).toFixed(4);
       const perModelTokens = Math.round(dayTotalTokens / d.modelsUsed.length);
       for (const mName of d.modelsUsed) {
+        const info = resolveModelInfo(mName, 'codex');
         breakdowns.push({
           modelName: mName,
-          agent: 'codex',
-          company: getCompany(mName, 'codex'),
+          agent: info.agent || 'codex',
+          company: info.company,
           inputTokens: Math.round((d.inputTokens || 0) / d.modelsUsed.length),
           outputTokens: Math.round((d.outputTokens || 0) / d.modelsUsed.length),
           cacheReadTokens: Math.round((d.cacheReadTokens || 0) / d.modelsUsed.length),
@@ -198,6 +185,10 @@ function buildDashboardData(tier = 'standard', agentFilter = 'all') {
 
   function ensureDay(date) {
     if (!dayMap[date]) {
+      const byCompany = {};
+      for (const cName of Object.keys(COMPANY_CONFIG)) {
+        byCompany[cName] = { cost: 0, tokens: 0, cacheTokens: 0, models: new Set() };
+      }
       dayMap[date] = {
         date,
         totalCost: 0,
@@ -206,12 +197,7 @@ function buildDashboardData(tier = 'standard', agentFilter = 'all') {
         inputTokens: 0,
         outputTokens: 0,
         byModel: {},
-        byCompany: {
-          'OpenAI': { cost: 0, tokens: 0, cacheTokens: 0, models: new Set() },
-          '智谱 AI (Z.ai)': { cost: 0, tokens: 0, cacheTokens: 0, models: new Set() },
-          'Google (Gemini)': { cost: 0, tokens: 0, cacheTokens: 0, models: new Set() },
-          'DeepSeek': { cost: 0, tokens: 0, cacheTokens: 0, models: new Set() }
-        },
+        byCompany,
         agents: new Set()
       };
     }
@@ -221,30 +207,53 @@ function buildDashboardData(tier = 'standard', agentFilter = 'all') {
   // Ensure current calendar day is always present
   ensureDay(todayStr);
 
-  // 1. Process Codex
-  if (agentFilter === 'all' || agentFilter === 'codex') {
-    for (const d of codexDaily) {
-      const day = ensureDay(d.date);
-      day.totalCost += d.totalCost;
-      day.totalTokens += d.totalTokens;
-      day.cacheReadTokens += d.cacheReadTokens;
-      day.inputTokens += d.inputTokens;
-      day.outputTokens += d.outputTokens;
-      day.agents.add('codex');
+  // 1. Process CLI Agent logs (Codex, Claude Code, Grok, etc.)
+  for (const d of codexDaily) {
+    let dayTotalCost = 0;
+    let dayTotalTokens = 0;
+    let dayCacheTokens = 0;
+    let dayInputTokens = 0;
+    let dayOutputTokens = 0;
+    const matchingBreakdowns = [];
 
-      for (const mb of d.modelBreakdowns) {
-        const comp = mb.company || 'OpenAI';
+    for (const mb of d.modelBreakdowns) {
+      const comp = mb.company || getCompany(mb.modelName, 'codex');
+      const agt = mb.agent || (comp === 'Anthropic' ? 'claude' : (comp === 'xAI' ? 'grok' : 'codex'));
+      if (agentFilter !== 'all' && agentFilter !== agt && agentFilter !== comp.toLowerCase()) {
+        continue;
+      }
+      matchingBreakdowns.push({ ...mb, company: comp, agent: agt });
+      dayTotalCost += mb.cost;
+      dayTotalTokens += mb.totalTokens;
+      dayCacheTokens += mb.cacheReadTokens;
+      dayInputTokens += mb.inputTokens;
+      dayOutputTokens += mb.outputTokens;
+    }
+
+    if (matchingBreakdowns.length > 0) {
+      const day = ensureDay(d.date);
+      day.totalCost += dayTotalCost;
+      day.totalTokens += dayTotalTokens;
+      day.cacheReadTokens += dayCacheTokens;
+      day.inputTokens += dayInputTokens;
+      day.outputTokens += dayOutputTokens;
+
+      for (const mb of matchingBreakdowns) {
+        day.agents.add(mb.agent);
         if (!day.byModel[mb.modelName]) {
-          day.byModel[mb.modelName] = { cost: 0, tokens: 0, cacheTokens: 0, agent: 'codex', company: comp };
+          day.byModel[mb.modelName] = { cost: 0, tokens: 0, cacheTokens: 0, agent: mb.agent, company: mb.company };
         }
         day.byModel[mb.modelName].cost += mb.cost;
         day.byModel[mb.modelName].tokens += mb.totalTokens;
         day.byModel[mb.modelName].cacheTokens += mb.cacheReadTokens;
 
-        day.byCompany[comp].cost += mb.cost;
-        day.byCompany[comp].tokens += mb.totalTokens;
-        day.byCompany[comp].cacheTokens += mb.cacheReadTokens;
-        day.byCompany[comp].models.add(mb.modelName);
+        if (!day.byCompany[mb.company]) {
+          day.byCompany[mb.company] = { cost: 0, tokens: 0, cacheTokens: 0, models: new Set() };
+        }
+        day.byCompany[mb.company].cost += mb.cost;
+        day.byCompany[mb.company].tokens += mb.totalTokens;
+        day.byCompany[mb.company].cacheTokens += mb.cacheReadTokens;
+        day.byCompany[mb.company].models.add(mb.modelName);
       }
     }
   }
@@ -269,6 +278,9 @@ function buildDashboardData(tier = 'standard', agentFilter = 'all') {
         day.byModel[mb.modelName].tokens += mb.totalTokens;
         day.byModel[mb.modelName].cacheTokens += mb.cacheReadTokens;
 
+        if (!day.byCompany[comp]) {
+          day.byCompany[comp] = { cost: 0, tokens: 0, cacheTokens: 0, models: new Set() };
+        }
         day.byCompany[comp].cost += mb.cost;
         day.byCompany[comp].tokens += mb.totalTokens;
         day.byCompany[comp].cacheTokens += mb.cacheReadTokens;
@@ -297,6 +309,9 @@ function buildDashboardData(tier = 'standard', agentFilter = 'all') {
       day.byModel[modelName].tokens += a.totalTokens;
       day.byModel[modelName].cacheTokens += a.cacheReadTokens;
 
+      if (!day.byCompany[comp]) {
+        day.byCompany[comp] = { cost: 0, tokens: 0, cacheTokens: 0, models: new Set() };
+      }
       day.byCompany[comp].cost += a.totalCost;
       day.byCompany[comp].tokens += a.totalTokens;
       day.byCompany[comp].cacheTokens += a.cacheReadTokens;
@@ -304,31 +319,55 @@ function buildDashboardData(tier = 'standard', agentFilter = 'all') {
     }
   }
 
-  // 4. 解析 OpenClaw 与 Reasonix 的 DeepSeek 真实历史调用
+  // 4. 解析 OpenClaw 与 Reasonix 轨迹
   const openclawDaily = openclaw.getOpenClawAndReasonixDaily();
   for (const o of openclawDaily) {
-    const day = ensureDay(o.date);
-    day.totalCost += o.totalCost;
-    day.totalTokens += o.totalTokens;
-    day.cacheReadTokens += o.cacheReadTokens;
-    day.inputTokens += o.inputTokens;
-    day.outputTokens += o.outputTokens;
-    day.agents.add('openclaw');
+    let dayTotalCost = 0;
+    let dayTotalTokens = 0;
+    let dayCacheTokens = 0;
+    let dayInputTokens = 0;
+    let dayOutputTokens = 0;
+    const matchingBreakdowns = [];
 
-    const comp = 'DeepSeek';
     for (const mb of o.modelBreakdowns) {
-      const mName = mb.modelName;
-      if (!day.byModel[mName]) {
-        day.byModel[mName] = { cost: 0, tokens: 0, cacheTokens: 0, agent: mb.agent, company: comp };
+      const comp = mb.company || getCompany(mb.modelName, 'openclaw');
+      const agt = mb.agent || (comp === 'Anthropic' ? 'claude' : (comp === 'xAI' ? 'grok' : 'openclaw'));
+      if (agentFilter !== 'all' && agentFilter !== agt && agentFilter !== 'openclaw' && agentFilter !== comp.toLowerCase()) {
+        continue;
       }
-      day.byModel[mName].cost += mb.cost;
-      day.byModel[mName].tokens += mb.totalTokens;
-      day.byModel[mName].cacheTokens += mb.cacheReadTokens;
+      matchingBreakdowns.push({ ...mb, company: comp, agent: agt });
+      dayTotalCost += mb.cost;
+      dayTotalTokens += mb.totalTokens;
+      dayCacheTokens += mb.cacheReadTokens;
+      dayInputTokens += mb.inputTokens;
+      dayOutputTokens += mb.outputTokens;
+    }
 
-      day.byCompany[comp].cost += mb.cost;
-      day.byCompany[comp].tokens += mb.totalTokens;
-      day.byCompany[comp].cacheTokens += mb.cacheReadTokens;
-      day.byCompany[comp].models.add(mName);
+    if (matchingBreakdowns.length > 0) {
+      const day = ensureDay(o.date);
+      day.totalCost += dayTotalCost;
+      day.totalTokens += dayTotalTokens;
+      day.cacheReadTokens += dayCacheTokens;
+      day.inputTokens += dayInputTokens;
+      day.outputTokens += dayOutputTokens;
+
+      for (const mb of matchingBreakdowns) {
+        day.agents.add('openclaw');
+        if (!day.byModel[mb.modelName]) {
+          day.byModel[mb.modelName] = { cost: 0, tokens: 0, cacheTokens: 0, agent: mb.agent, company: mb.company };
+        }
+        day.byModel[mb.modelName].cost += mb.cost;
+        day.byModel[mb.modelName].tokens += mb.totalTokens;
+        day.byModel[mb.modelName].cacheTokens += mb.cacheReadTokens;
+
+        if (!day.byCompany[mb.company]) {
+          day.byCompany[mb.company] = { cost: 0, tokens: 0, cacheTokens: 0, models: new Set() };
+        }
+        day.byCompany[mb.company].cost += mb.cost;
+        day.byCompany[mb.company].tokens += mb.totalTokens;
+        day.byCompany[mb.company].cacheTokens += mb.cacheReadTokens;
+        day.byCompany[mb.company].models.add(mb.modelName);
+      }
     }
   }
 
@@ -766,7 +805,7 @@ const server = http.createServer((req, res) => {
       if (!['standard', 'flagship'].includes(tier)) tier = 'standard';
 
       let agent = (urlObj.searchParams.get('agent') || 'all').toLowerCase();
-      if (!['all', 'codex', 'zcode', 'antigravity', 'openclaw'].includes(agent)) agent = 'all';
+      if (!['all', 'codex', 'zcode', 'antigravity', 'openclaw', 'claude', 'grok'].includes(agent)) agent = 'all';
 
       const data = getCachedDashboardData(tier, agent);
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -774,6 +813,23 @@ const server = http.createServer((req, res) => {
     } catch (err) {
       res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ error: 'Failed to load dashboard data', message: err.message }));
+    }
+    return;
+  }
+
+  // API 4: Models & Pricing Catalog
+  if (pathname === '/api/models-pricing') {
+    try {
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({
+        status: 'ok',
+        companies: COMPANY_CONFIG,
+        models: MODEL_CATALOG,
+        timestamp: Date.now()
+      }));
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ error: 'Failed to load models pricing', message: err.message }));
     }
     return;
   }

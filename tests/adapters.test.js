@@ -90,4 +90,54 @@ test('Adapters & Calculations Unit Tests', async (t) => {
       assert.ok(typeof item.totalCost === 'number');
     }
   });
+
+  await t.test('7. Models Pricing: calculates Claude 3.7 Sonnet accurately with cache', () => {
+    const { calculateModelCost, resolveModelInfo } = require('../models-pricing');
+    const info = resolveModelInfo('anthropic/claude-3-7-sonnet-20250219');
+    assert.equal(info.canonicalName, 'claude-3-7-sonnet');
+    assert.equal(info.company, 'Anthropic');
+    assert.equal(info.agent, 'claude');
+
+    // 1M in (200k cache, 800k fresh), 500k out
+    // 0.8M * $3 + 0.2M * $0.30 + 0.5M * $15 = 2.40 + 0.06 + 7.50 = 9.96
+    const cost = calculateModelCost('claude-3-7-sonnet', 1_000_000, 500_000, 200_000);
+    assert.equal(+cost.toFixed(2), 9.96);
+  });
+
+  await t.test('8. Models Pricing: calculates Grok 3 and Grok 2 accurately', () => {
+    const { calculateModelCost, resolveModelInfo } = require('../models-pricing');
+    const grok3Info = resolveModelInfo('xai/grok-3');
+    assert.equal(grok3Info.company, 'xAI');
+    assert.equal(grok3Info.agent, 'grok');
+
+    // Grok 3: in $3, out $15, cache $0.75
+    // 800k * $3 + 200k * $0.75 + 500k * $15 = 2.40 + 0.15 + 7.50 = 10.05
+    const grok3Cost = calculateModelCost('grok-3', 1_000_000, 500_000, 200_000);
+    assert.equal(+grok3Cost.toFixed(2), 10.05);
+
+    // Grok 2: in $2, out $10, cache $0.20
+    const grok2Cost = calculateModelCost('grok-2', 1_000_000, 200_000, 0);
+    assert.equal(+grok2Cost.toFixed(2), 4.00);
+  });
+
+  await t.test('9. Models Pricing: fuzzy matches various model identifiers', () => {
+    const { resolveModelInfo } = require('../models-pricing');
+    assert.equal(resolveModelInfo('claude-3-5-sonnet-20241022').company, 'Anthropic');
+    assert.equal(resolveModelInfo('grok-2-1212').company, 'xAI');
+    assert.equal(resolveModelInfo('deepseek-reasoner').company, 'DeepSeek');
+    assert.equal(resolveModelInfo('qwen-2.5-coder-32b').company, 'Qwen (通义千问)');
+    assert.equal(resolveModelInfo('mistral-large').company, 'Other / OpenSource');
+  });
+
+  await t.test('10. Project Adapter includes multi-vendor company attributes', () => {
+    const projects = projectAdapter.getProjectAttributionList();
+    assert.ok(Array.isArray(projects));
+    if (projects.length > 0) {
+      const p = projects[0];
+      assert.ok(p.companies.anthropic, 'companies.anthropic must exist');
+      assert.ok(p.companies.xai, 'companies.xai must exist');
+      assert.ok(typeof p.companies.anthropic.cost === 'number');
+      assert.ok(typeof p.companies.xai.cost === 'number');
+    }
+  });
 });

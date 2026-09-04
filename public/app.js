@@ -1195,7 +1195,14 @@ function renderTodayDashboard() {
       if (mData.company === 'Google (Gemini)') color = '#06b6d4';
       else if (mData.company === '智谱 AI (Z.ai)') color = '#10b981';
       else if (mData.company === 'DeepSeek') color = '#f43f5e';
+      else if (mData.company === 'Anthropic') color = '#d97706';
+      else if (mData.company === 'xAI') color = '#8b5cf6';
+      else if (mData.company === 'Qwen (通义千问)') color = '#ec4899';
       else if (mData.company === 'OpenAI') color = '#3b82f6';
+      else {
+        const found = (cachedData?.companies || []).find(c => c.name === mData.company);
+        if (found && found.color) color = found.color;
+      }
 
       modelsList.push({
         name: mName,
@@ -1293,6 +1300,76 @@ function renderTodayDashboard() {
     });
     stripContainer.innerHTML = stripHtml || '<div style="color:var(--text-dim);font-size:11px;">今日无新生成图像</div>';
   }
+}
+
+// ── Model Pricing Matrix Modal Logic ───────────
+let cachedPricingMatrix = null;
+
+async function togglePricingModal() {
+  const modal = document.getElementById('pricing-modal');
+  if (!modal) return;
+  const isHidden = modal.style.display === 'none' || !modal.style.display;
+  if (isHidden) {
+    modal.style.display = 'flex';
+    if (!cachedPricingMatrix) {
+      await loadPricingMatrix();
+    }
+  } else {
+    modal.style.display = 'none';
+  }
+}
+
+async function loadPricingMatrix() {
+  const tbody = document.getElementById('pricing-table-body');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-muted)">正在加载官方计费矩阵...</td></tr>';
+  try {
+    const res = await fetch('/api/models-pricing');
+    const data = await res.json();
+    cachedPricingMatrix = data;
+    renderPricingTable(data.models, data.companies);
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:20px;color:#f43f5e">获取价目表失败: ${err.message}</td></tr>`;
+  }
+}
+
+function renderPricingTable(models, companies) {
+  const tbody = document.getElementById('pricing-table-body');
+  if (!tbody) return;
+
+  const entries = Object.entries(models || {});
+  let html = '';
+  for (const [mKey, mVal] of entries) {
+    const compConf = (companies && companies[mVal.company]) || { color: '#94a3b8', badgeClass: 'badge-other' };
+    const std = mVal.standard || {};
+    html += `
+      <tr class="pricing-row" data-search="${mKey} ${mVal.label || ''} ${mVal.company || ''}">
+        <td>
+          <span class="pricing-provider-tag ${compConf.badgeClass || ''}">${mVal.company}</span>
+        </td>
+        <td>
+          <strong style="color:var(--text-main)">${mVal.label || mKey}</strong>
+          <div style="font-size:11px;color:var(--text-dim);font-family:monospace">${mKey}</div>
+        </td>
+        <td class="font-mono text-emerald">$${Number(std.in || 0).toFixed(2)}</td>
+        <td class="font-mono text-blue">$${Number(std.out || 0).toFixed(2)}</td>
+        <td class="font-mono text-purple">$${Number(std.cache || 0).toFixed(3)}</td>
+        <td>
+          <span style="font-size:12px;color:var(--text-muted)">${mVal.agent || 'cli'}</span>
+        </td>
+      </tr>
+    `;
+  }
+  tbody.innerHTML = html;
+}
+
+function filterPricingTable() {
+  const query = (document.getElementById('pricing-search-input')?.value || '').toLowerCase().trim();
+  const rows = document.querySelectorAll('.pricing-row');
+  rows.forEach(r => {
+    const s = r.getAttribute('data-search').toLowerCase();
+    r.style.display = (!query || s.includes(query)) ? '' : 'none';
+  });
 }
 
 // Initial Load
