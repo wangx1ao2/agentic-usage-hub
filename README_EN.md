@@ -9,7 +9,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/wangx1ao2/agentic-usage-hub/actions"><img src="https://img.shields.io/badge/tests-25%20passed-success.svg" alt="Tests"></a>
+  <a href="https://github.com/wangx1ao2/agentic-usage-hub/actions/workflows/ci.yml">
+    <img src="https://github.com/wangx1ao2/agentic-usage-hub/actions/workflows/ci.yml/badge.svg" alt="CI">
+  </a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-%3E%3D20.0.0-blue.svg" alt="Node Version"></a>
   <a href="https://www.npmjs.com/package/agentic-usage-hub"><img src="https://img.shields.io/badge/npx-agentic--usage--hub-orange.svg" alt="npx ready"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License: MIT"></a>
@@ -59,6 +61,17 @@ In modern AI-assisted software engineering, developers frequently combine multip
 - **Codex Image Studio**: Incrementally indexes locally generated assets, prompts, and timestamps with lightbox preview;
 - **Built-in Official Pricing Matrix**: Slide-out drawer with instant fuzzy search to inspect input, cached input, and output tariffs per million tokens;
 - **Adaptive Dual Theme**: Automatically synchronizes with system dark/light preferences (`prefers-color-scheme`) with one-click manual override (Auto / Light / Dark).
+
+---
+
+## ❓ FAQ
+
+- **Why should I track my AI coding agent token usage?** — Spend is scattered across subscriptions and API keys, so token burn is invisible until the bill arrives. A unified view turns AI spend into a measurable engineering metric.
+- **How do I see how much my Claude Code or Codex CLI sessions actually cost?** — Run `npx agentic-usage-hub`. It reads each agent's local session logs read-only, normalizes them against the built-in official pricing catalog (including prompt-cache read pricing), and shows live per-model, per-provider USD cost.
+- **Which AI coding agents are supported?** — OpenAI Codex CLI (including GPT-Image-2 assets), Anthropic Claude Code, xAI Grok CLI, Google Antigravity / Gemini, DeepSeek OpenClaw / Reasonix, and Zhipu AI ZCode. The adapter interface makes adding new agents straightforward.
+- **How is this different from ccusage?** — ccusage analyzes Claude Code usage from the terminal. Agentic Usage Hub unifies **all** major coding agents in one local dashboard, adding cross-provider live telemetry, per-project attribution, and an interactive pricing matrix.
+- **Does any of my data leave my machine?** — No. The hub is 100% local and offline: no telemetry, no accounts, no API keys. It only reads your existing agent logs.
+- **How do I attribute token spend to a specific project?** — Every session carries its working directory; the attribution engine clusters these into your physical projects and workspaces, then rolls up tokens and cost per project.
 
 ---
 
@@ -198,3 +211,5 @@ npm test
 ## 📄 License
 
 This project is licensed under the [MIT License](LICENSE).
+
+<a href="llms.txt">🤖 llms.txt — machine-readable project summary for LLM / AI crawlers</a>

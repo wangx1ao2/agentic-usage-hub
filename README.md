@@ -9,7 +9,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/wangx1ao2/agentic-usage-hub/actions"><img src="https://img.shields.io/badge/tests-25%20passed-success.svg" alt="Tests"></a>
+  <a href="https://github.com/wangx1ao2/agentic-usage-hub/actions/workflows/ci.yml">
+    <img src="https://github.com/wangx1ao2/agentic-usage-hub/actions/workflows/ci.yml/badge.svg" alt="CI">
+  </a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-%3E%3D20.0.0-blue.svg" alt="Node Version"></a>
   <a href="https://www.npmjs.com/package/agentic-usage-hub"><img src="https://img.shields.io/badge/npx-agentic--usage--hub-orange.svg" alt="npx ready"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License: MIT"></a>
@@ -51,6 +53,17 @@
 - **生图资产 Studio 画廊**：增量检索 Codex 自动化生成的图片资产与 Prompt，支持灯箱大图预览；
 - **官方计费速查矩阵**：前端内置交互式主流大模型官方计费价目矩阵抽屉，支持按模型名/厂商即时模糊搜索与实时费率核对；
 - **双主题自适应**：支持跟随系统（`prefers-color-scheme`）自适应切换，并提供一键手动控制（自动 / 浅色 / 深色）。
+
+---
+
+## ❓ 常见问题 (FAQ)
+
+- **为什么要统计 AI 编程智能体的 Token 用量？** —— 订阅与 API Key 分散在各家，Token 烧了多少在账单来之前完全不可见。统一视图能把"AI 花费"变成可度量的工程指标。
+- **如何查看我的 Claude Code / Codex CLI 会话实际花了多少钱？** —— 运行 `npx agentic-usage-hub`，它会以只读方式解析各 Agent 本地会话日志，按内置官方价目表（含 Prompt 缓存读取单价）折算成美元，实时展示按模型、按厂商的成本。
+- **支持哪些 AI 编程智能体？** —— OpenAI Codex CLI（含 GPT-Image-2 生图资产）、Anthropic Claude Code、xAI Grok CLI、Google Antigravity / Gemini、DeepSeek OpenClaw / Reasonix、智谱 AI ZCode；适配器接口清晰，新增 Agent 成本很低。
+- **与 ccusage 有什么区别？** —— ccusage 在终端分析 Claude Code 单一工具的用量；Agentic Usage Hub 把**所有**主流编程 Agent 聚合进同一个本地看板，并提供跨厂商实时遥测、按工程归因与交互式价目矩阵。
+- **我的数据会离开本机吗？** —— 不会。看板 100% 本地离线运行：无遥测上报、无账号、无需任何 API Key，只读取你已有的 Agent 日志。
+- **如何把 Token 消耗归因到具体项目？** —— 每个 Agent 会话都携带工作目录信息，归因引擎会将其聚类到你的物理工程与工作区，并按项目汇总 Token 与成本。
 
 ---
 
@@ -182,3 +195,5 @@ npm test
 
 ## 📄 许可说明
 本项目基于 [MIT License](LICENSE) 开源。
+
+<a href="llms.txt">🤖 llms.txt — 面向 LLM / AI 爬虫的机器可读项目摘要</a>

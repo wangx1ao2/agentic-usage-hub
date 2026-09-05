@@ -1,0 +1,20 @@
+# Agentic Usage Hub
+
+> Local-first token usage and cost analytics dashboard for AI coding agents
+> (OpenAI Codex CLI, Claude Code, Google Antigravity/Gemini, xAI Grok, DeepSeek
+> OpenClaw/Reasonix, Zhipu ZCode). Reads agent session logs read-only and
+> aggregates tokens, prompt-cache hits and USD cost per model, per vendor and
+> per local project. 100% offline, zero telemetry.
+
+## Run
+
+- One command: `npx agentic-usage-hub` (Node.js >= 20), dashboard at http://localhost:4242
+- Flags: `--port/-p`, `--open/-o`, `--version/-v`, `--help/-h`
+- Optional env config via `.env` (PORT, CODEX_IMAGE_DIRS, OPENCLAW_SESSIONS_DIR, REASONIX_USAGE_FILE)
+
+## Docs
+
+- [README (EN)](README_EN.md): features, quick start, API endpoints
+- [README (中文)](README.md): 中文文档
+- [Security model](README.md): local-only, no credentials, path-traversal protection
+- License: MIT

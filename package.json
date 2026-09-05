@@ -1,7 +1,7 @@
 {
   "name": "agentic-usage-hub",
   "version": "1.0.0",
-  "description": "Multi-agent token telemetry and usage analytics dashboard for AI coding agents (OpenAI Codex, 智谱 ZCode, Google Antigravity, DeepSeek OpenClaw/Reasonix).",
+  "description": "Local-first token usage, cache-hit and USD cost analytics dashboard for AI coding agents: OpenAI Codex CLI, Claude Code, Google Antigravity/Gemini, xAI Grok, DeepSeek OpenClaw/Reasonix and Zhipu ZCode. Runs fully offline via npx, with per-model pricing, live today view and per-project attribution.",
   "main": "unified-server.js",
   "bin": {
     "agentic-usage-hub": "./bin/agentic-usage-hub.js"
@@ -17,17 +17,21 @@
     "url": "git+https://github.com/wangx1ao2/agentic-usage-hub.git"
   },
   "keywords": [
-    "token",
-    "ai-agent",
-    "dashboard",
-    "telemetry",
+    "token-usage",
+    "cost-tracking",
+    "usage-dashboard",
+    "llm-analytics",
+    "claude-code",
     "codex",
-    "claude",
-    "grok",
-    "zcode",
+    "gemini-cli",
     "antigravity",
-    "openclaw",
-    "deepseek"
+    "grok",
+    "deepseek",
+    "zcode",
+    "zhipu",
+    "ai-agent",
+    "developer-tools",
+    "ccusage"
   ],
   "author": "wangx1ao2",
   "license": "MIT",
@@ -43,6 +47,7 @@
     "LICENSE",
     "README.md",
     "README_EN.md",
+    "llms.txt",
     "docs/images"
   ],
   "type": "commonjs",
