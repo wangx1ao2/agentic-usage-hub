@@ -51,6 +51,9 @@
     "docs/images"
   ],
   "type": "commonjs",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "dependencies": {
     "ccusage": "^20.0.20",
     "chart.js": "^4.5.1"

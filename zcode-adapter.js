@@ -1,4 +1,3 @@
-const { DatabaseSync } = require('node:sqlite');
 const os = require('os');
 const path = require('path');
 const fs = require('fs');
@@ -40,6 +39,14 @@ function calculateCost(modelId, inTok, outTok, cacheTok, tier = 'standard') {
 function getZCodeDaily(tier = 'standard') {
   const dbPath = path.join(os.homedir(), '.zcode', 'cli', 'db', 'db.sqlite');
   if (!fs.existsSync(dbPath)) return [];
+  // node:sqlite 自 Node 22.5 起提供；低版本 Node 优雅降级为空数据，保证看板其余功能可用
+  let DatabaseSync;
+  try {
+    ({ DatabaseSync } = require('node:sqlite'));
+  } catch (err) {
+    console.warn('[zcode-adapter] 当前 Node 版本不含 node:sqlite (需 >= 22.5)，已跳过 ZCode 数据读取');
+    return [];
+  }
   try {
     const db = new DatabaseSync(dbPath, { readOnly: true });
     const rows = db.prepare(`
