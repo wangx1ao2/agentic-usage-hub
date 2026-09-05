@@ -1,7 +1,6 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { DatabaseSync } = require('node:sqlite');
 const { COMPANY_CONFIG, resolveModelInfo, calculateModelCost } = require('./models-pricing');
 
 function estCost(model, tokens, cacheTokens = 0) {
@@ -94,6 +93,15 @@ function canonicalizeProject(rawPath) {
 function getProjectAttributionList() {
   const projectMap = {};
 
+  // node:sqlite 自 Node 22.5 起提供；低版本 Node 跳过 SQLite 数据源
+  // （Codex/ZCode 工程），Claude/Grok 等基于文件的归因不受影响
+  let DatabaseSync = null;
+  try {
+    ({ DatabaseSync } = require('node:sqlite'));
+  } catch (err) {
+    console.warn('[project-adapter] 当前 Node 版本不含 node:sqlite (需 >= 22.5)，已跳过 SQLite 工程归因数据');
+  }
+
   function ensureProject(info, samplePath) {
     if (!projectMap[info.key]) {
       projectMap[info.key] = {
@@ -126,7 +134,7 @@ function getProjectAttributionList() {
 
   // 1. Process Codex threads from state_5.sqlite
   const codexDb = path.join(os.homedir(), '.codex', 'state_5.sqlite');
-  if (fs.existsSync(codexDb)) {
+  if (DatabaseSync && fs.existsSync(codexDb)) {
     try {
       const db = new DatabaseSync(codexDb, { readOnly: true });
       const rows = db.prepare(`
@@ -169,7 +177,7 @@ function getProjectAttributionList() {
 
   // 2. Process ZCode sessions from db.sqlite
   const zcodeDb = path.join(os.homedir(), '.zcode', 'cli', 'db', 'db.sqlite');
-  if (fs.existsSync(zcodeDb)) {
+  if (DatabaseSync && fs.existsSync(zcodeDb)) {
     try {
       const db = new DatabaseSync(zcodeDb, { readOnly: true });
       
