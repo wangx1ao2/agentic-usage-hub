@@ -1,0 +1,28 @@
+name: 💡 Feature Request
+description: Suggest a new AI agent adapter, chart dimension, or improvement
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        We welcome ideas for expanding Agentic Usage Hub to more AI coding agents, pricing catalogs, and telemetry views!
+  - type: textarea
+    id: problem
+    attributes:
+      label: Is your feature request related to a problem or new agent?
+      description: A clear and concise description of the new agent, missing model pricing, or workflow need.
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Describe the Solution You'd Like
+      description: Detailed explanation of how this should work (e.g. log path, format, pricing rules).
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Additional Context or Mockups
+      description: Any screenshots, logs samples, or documentation links for reference.

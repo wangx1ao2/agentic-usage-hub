@@ -9,12 +9,13 @@
 ## Run
 
 - One command: `npx agentic-usage-hub` (Node.js >= 20), dashboard at http://localhost:4242
-- Flags: `--port/-p`, `--open/-o`, `--version/-v`, `--help/-h`
+- MCP Server: `npx agentic-usage-hub --mcp` (Stdio JSON-RPC for Claude Code, Cursor, Windsurf)
+- Flags: `--port/-p`, `--open/-o`, `--mcp`, `--version/-v`, `--help/-h`
 - Optional env config via `.env` (PORT, CODEX_IMAGE_DIRS, OPENCLAW_SESSIONS_DIR, REASONIX_USAGE_FILE)
 
 ## Docs
 
-- [README (EN)](README_EN.md): features, quick start, API endpoints
+- [README (EN)](README_EN.md): features, quick start, API endpoints, MCP setup
 - [README (中文)](README.md): 中文文档
 - [Security model](README.md): local-only, no credentials, path-traversal protection
 - License: MIT

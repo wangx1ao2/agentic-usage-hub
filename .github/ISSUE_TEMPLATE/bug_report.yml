@@ -1,0 +1,54 @@
+name: 🐛 Bug Report
+description: Report a defect, parsing error, or unexpected behavior in Agentic Usage Hub
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please ensure you are running the latest version (`npx agentic-usage-hub@latest`).
+  - type: dropdown
+    id: agent
+    attributes:
+      label: Affected AI Coding Agent
+      description: Which agent's telemetry or adapter had the issue?
+      options:
+        - OpenAI Codex CLI
+        - Anthropic Claude Code
+        - Google Gemini / Antigravity
+        - xAI Grok CLI
+        - DeepSeek OpenClaw / Reasonix
+        - 智谱 AI ZCode
+        - Web Dashboard UI / Charts
+        - MCP Server (--mcp)
+        - Other / Not sure
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment Info
+      description: OS and Node.js version (e.g., Windows 11, Node v22.14.0)
+      placeholder: "e.g., macOS Sonoma, Node v22.0.0"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the Bug
+      description: A clear and concise description of what went wrong.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen instead?
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Terminal Logs / Error Output
+      description: Please paste any relevant console logs (ensure no private API keys are included).
+      render: shell

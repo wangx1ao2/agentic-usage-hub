@@ -62,6 +62,7 @@
 - **如何查看我的 Claude Code / Codex CLI 会话实际花了多少钱？** —— 运行 `npx agentic-usage-hub`，它会以只读方式解析各 Agent 本地会话日志，按内置官方价目表（含 Prompt 缓存读取单价）折算成美元，实时展示按模型、按厂商的成本。
 - **支持哪些 AI 编程智能体？** —— OpenAI Codex CLI（含 GPT-Image-2 生图资产）、Anthropic Claude Code、xAI Grok CLI、Google Antigravity / Gemini、DeepSeek OpenClaw / Reasonix、智谱 AI ZCode；适配器接口清晰，新增 Agent 成本很低。
 - **与 ccusage 有什么区别？** —— ccusage 在终端分析 Claude Code 单一工具的用量；Agentic Usage Hub 把**所有**主流编程 Agent 聚合进同一个本地看板，并提供跨厂商实时遥测、按工程归因与交互式价目矩阵。
+- **如何作为 MCP Server 接入 Claude Code 或 Cursor？** —— 运行 `npx agentic-usage-hub --mcp` 即可启动标准 Model Context Protocol (MCP) 服务，向 AI 助手暴露 `get_usage_today`、`get_usage_range`、`get_project_breakdown` 三大工具，允许你在对话中直接询问“我今天消耗了多少 Token”、“哪个项目最烧钱”。
 - **我的数据会离开本机吗？** —— 不会。看板 100% 本地离线运行：无遥测上报、无账号、无需任何 API Key，只读取你已有的 Agent 日志。
 - **如何把 Token 消耗归因到具体项目？** —— 每个 Agent 会话都携带工作目录信息，归因引擎会将其聚类到你的物理工程与工作区，并按项目汇总 Token 与成本。
 
@@ -74,8 +75,10 @@ agentic-usage-hub/
 ├── .github/workflows/ci.yml # GitHub Actions 持续集成自动化测试工作流
 ├── bin/                     # CLI 全局运行入口 (npx agentic-usage-hub)
 │   └── agentic-usage-hub.js
+├── mcp/                     # Model Context Protocol (MCP) 服务模块
+│   └── server.js            # Stdio JSON-RPC 2.0 服务端与工具暴露
 ├── docs/                    # 项目文档与高清预览资源
-│   └── images/              # 界面效果图
+│   └── images/              # 界面效果图与 Social Preview 卡片
 ├── unified-server.js        # 核心 Node.js 原生 HTTP 服务与路由调度
 ├── models-pricing.js        # 统一模型定价矩阵、Fuzzy 模糊规整与厂商识别引擎
 ├── antigravity-adapter.js   # Google Antigravity / Gemini 3.7 Flash 本地日志解析适配器
@@ -93,7 +96,8 @@ agentic-usage-hub/
 │   └── chart.umd.js         # 本地化 Chart.js 库
 └── tests/                   # 自动化集成与单元测试套件
     ├── api.test.js          # REST API 端点、边界条件、错误处理与安全防御测试
-    └── adapters.test.js     # 各厂商适配器解析、计费公式与数据结构测试
+    ├── adapters.test.js     # 各厂商适配器解析、计费公式与数据结构测试
+    └── mcp.test.js          # MCP 协议握手、工具发现与执行测试
 ```
 
 ---
@@ -110,11 +114,35 @@ npx agentic-usage-hub
 
 # 或指定端口并在启动后自动在浏览器打开页面
 npx agentic-usage-hub -p 4242 -o
+
+# 全局安装备选方式
+npm install -g agentic-usage-hub
+agentic-usage-hub -o
 ```
 
 启动完成后，直接在浏览器中访问：👉 **`http://localhost:4242`**
 
-### 方式二：Git 源码安装
+### 方式二：作为 MCP Server 接入 AI 编程工具 🤖
+
+本项目原生内置了遵循 **Model Context Protocol (MCP)** 标准的 Stdio 服务。你可以在 Claude Code、Cursor、Windsurf 或 Claude Desktop 中将其配置为 MCP Server：
+
+```json
+{
+  "mcpServers": {
+    "agentic-usage-hub": {
+      "command": "npx",
+      "args": ["-y", "agentic-usage-hub", "--mcp"]
+    }
+  }
+}
+```
+
+配置完成后，AI 助手即可调用以下内置工具：
+- `get_usage_today`: 实时获取今日各 Agent 的 Token 吞吐、Prompt 缓存命中与美元成本估算；
+- `get_usage_range`: 按日期区间统计历史消耗，支持按厂商（OpenAI、Anthropic 等）或按核心模型聚合；
+- `get_project_breakdown`: 获取各本地工程路径的消耗归因排行榜。
+
+### 方式三：Git 源码安装
 
 ```bash
 # 1. 克隆代码仓库
@@ -134,6 +162,7 @@ npm start
 | :--- | :--- | :--- | :--- |
 | `--port <port>` | `-p` | `4242` 或 `$PORT` | 自定义 HTTP 监听端口 |
 | `--open` | `-o` | `false` | 服务就绪后自动调用系统默认浏览器打开大屏 |
+| `--mcp` | - | `false` | 启动 Model Context Protocol (MCP) Stdio 服务，供 AI 工具调用 |
 | `--version` | `-v` | - | 打印当前安装版本号 |
 | `--help` | `-h` | - | 输出帮助指南与支持的模型列表 |
 
@@ -149,7 +178,7 @@ cp .env.example .env
 - `REASONIX_USAGE_FILE`: 自定义 Reasonix 计量日志路径（可选）
 
 ### 运行自动化测试套件
-本项目包含覆盖核心 API、适配器计算、参数校验和路径安全防御的完整测试（共 25 项测试用例，100% 通过）：
+本项目包含覆盖核心 API、适配器计算、参数校验、MCP 工具调用与路径安全防御的完整测试（共 31 项测试用例，100% 通过）：
 ```bash
 npm test
 ```

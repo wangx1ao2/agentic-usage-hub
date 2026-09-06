@@ -8,7 +8,7 @@
   },
   "scripts": {
     "start": "node unified-server.js",
-    "test": "node --test tests/api.test.js tests/adapters.test.js",
+    "test": "node --test tests/api.test.js tests/adapters.test.js tests/mcp.test.js",
     "daily": "ccusage codex daily",
     "monthly": "ccusage codex monthly"
   },
@@ -31,7 +31,10 @@
     "zhipu",
     "ai-agent",
     "developer-tools",
-    "ccusage"
+    "ccusage",
+    "model-context-protocol",
+    "mcp-server",
+    "mcp"
   ],
   "author": "wangx1ao2",
   "license": "MIT",
@@ -41,6 +44,7 @@
   "homepage": "https://github.com/wangx1ao2/agentic-usage-hub#readme",
   "files": [
     "bin",
+    "mcp",
     "public",
     "*.js",
     ".env.example",

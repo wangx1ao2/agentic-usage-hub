@@ -70,6 +70,7 @@ In modern AI-assisted software engineering, developers frequently combine multip
 - **How do I see how much my Claude Code or Codex CLI sessions actually cost?** — Run `npx agentic-usage-hub`. It reads each agent's local session logs read-only, normalizes them against the built-in official pricing catalog (including prompt-cache read pricing), and shows live per-model, per-provider USD cost.
 - **Which AI coding agents are supported?** — OpenAI Codex CLI (including GPT-Image-2 assets), Anthropic Claude Code, xAI Grok CLI, Google Antigravity / Gemini, DeepSeek OpenClaw / Reasonix, and Zhipu AI ZCode. The adapter interface makes adding new agents straightforward.
 - **How is this different from ccusage?** — ccusage analyzes Claude Code usage from the terminal. Agentic Usage Hub unifies **all** major coding agents in one local dashboard, adding cross-provider live telemetry, per-project attribution, and an interactive pricing matrix.
+- **How do I use this with Claude Code, Cursor, or Windsurf as an MCP server?** — Run `npx agentic-usage-hub --mcp` to start a standard Model Context Protocol (MCP) server over stdio. It exposes `get_usage_today`, `get_usage_range`, and `get_project_breakdown` tools so your AI coding assistant can directly answer "What did I spend on AI today?" or "Which project is burning the most tokens?".
 - **Does any of my data leave my machine?** — No. The hub is 100% local and offline: no telemetry, no accounts, no API keys. It only reads your existing agent logs.
 - **How do I attribute token spend to a specific project?** — Every session carries its working directory; the attribution engine clusters these into your physical projects and workspaces, then rolls up tokens and cost per project.
 
@@ -82,8 +83,10 @@ agentic-usage-hub/
 ├── .github/workflows/ci.yml # GitHub Actions continuous integration workflow
 ├── bin/                     # Global CLI executable (npx agentic-usage-hub)
 │   └── agentic-usage-hub.js
+├── mcp/                     # Model Context Protocol (MCP) server module
+│   └── server.js            # Stdio JSON-RPC 2.0 server & tool handlers
 ├── docs/                    # High-resolution screenshots and documentation
-│   └── images/
+│   └── images/              # Dashboard captures & social preview card
 ├── unified-server.js        # Core native Node.js HTTP server and router
 ├── models-pricing.js        # Unified model pricing matrix, fuzzy matching, and provider resolver
 ├── antigravity-adapter.js   # Google Antigravity / Gemini 3.7 Flash log adapter
@@ -101,7 +104,8 @@ agentic-usage-hub/
 │   └── chart.umd.js         # Vendored Chart.js library
 └── tests/                   # Automated integration and unit test suite
     ├── api.test.js          # REST API endpoints, validation, and security test cases
-    └── adapters.test.js     # Provider adapters, pricing calculations, and parsing tests
+    ├── adapters.test.js     # Provider adapters, pricing calculations, and parsing tests
+    └── mcp.test.js          # MCP protocol handshake, tool discovery & execution tests
 ```
 
 ---
@@ -118,13 +122,39 @@ npx agentic-usage-hub
 
 # Or specify a custom port and automatically open default browser
 npx agentic-usage-hub -p 4242 -o
+
+# Optional global installation
+npm install -g agentic-usage-hub
+agentic-usage-hub -o
 ```
 
 Once running, open: 👉 **`http://localhost:4242`**
 
 ---
 
-### Method 2: Git Clone & Source Run
+### Method 2: Connect as an MCP Server (Claude Code, Cursor, Windsurf) 🤖
+
+Agentic Usage Hub provides a native Model Context Protocol (MCP) server over stdio. Configure it directly in your AI assistant:
+
+```json
+{
+  "mcpServers": {
+    "agentic-usage-hub": {
+      "command": "npx",
+      "args": ["-y", "agentic-usage-hub", "--mcp"]
+    }
+  }
+}
+```
+
+Available tools exposed to your AI:
+- `get_usage_today`: Real-time cross-agent token throughput, prompt cache hit rate, and USD cost breakdown for today;
+- `get_usage_range`: Historical consumption aggregated by provider (OpenAI, Anthropic, Google, etc.) or by model for any date range;
+- `get_project_breakdown`: Local workspace project rankings sorted by token volume and USD cost.
+
+---
+
+### Method 3: Git Clone & Source Run
 
 ```bash
 # 1. Clone repository
@@ -146,6 +176,7 @@ npm start
 | :--- | :--- | :--- | :--- |
 | `--port <port>` | `-p` | `4242` or `$PORT` | Custom HTTP server listening port |
 | `--open` | `-o` | `false` | Automatically launch default browser upon server ready |
+| `--mcp` | - | `false` | Start Model Context Protocol (MCP) stdio server |
 | `--version` | `-v` | - | Print current version number |
 | `--help` | `-h` | - | Display CLI usage manual and options list |
 
@@ -169,7 +200,7 @@ Available variables:
 
 ### Running Automated Tests
 
-The repository includes an automated test suite covering all REST endpoints, adapter computations, input validation, and path traversal security guards (25/25 passing):
+The repository includes an automated test suite covering all REST endpoints, adapter computations, input validation, MCP tool calls, and path traversal security guards (31/31 passing):
 
 ```bash
 npm test

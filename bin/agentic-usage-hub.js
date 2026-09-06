@@ -11,6 +11,12 @@ const pkg = require('../package.json');
 
 const args = process.argv.slice(2);
 
+// Handle MCP Server flag
+if (args.includes('--mcp')) {
+  require('../mcp/server.js').startServer();
+  return;
+}
+
 // Handle flags
 if (args.includes('-h') || args.includes('--help')) {
   console.log(`
@@ -23,6 +29,7 @@ Usage:
 Options:
   -p, --port <port>   Set HTTP server port (default: 4242 or $PORT)
   -o, --open          Automatically open dashboard in your default browser
+  --mcp               Start Model Context Protocol (MCP) stdio server
   -v, --version       Display version number
   -h, --help          Show this help message
 
