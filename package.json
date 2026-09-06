@@ -4,7 +4,7 @@
   "description": "Local-first token usage, cache-hit and USD cost analytics dashboard for AI coding agents: OpenAI Codex CLI, Claude Code, Google Antigravity/Gemini, xAI Grok, DeepSeek OpenClaw/Reasonix and Zhipu ZCode. Runs fully offline via npx, with per-model pricing, live today view and per-project attribution.",
   "main": "unified-server.js",
   "bin": {
-    "agentic-usage-hub": "./bin/agentic-usage-hub.js"
+    "agentic-usage-hub": "bin/agentic-usage-hub.js"
   },
   "scripts": {
     "start": "node unified-server.js",
