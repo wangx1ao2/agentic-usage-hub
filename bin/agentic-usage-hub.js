@@ -65,7 +65,8 @@ const shouldOpen = args.includes('-o') || args.includes('--open');
 const targetPort = customPort || process.env.PORT || 4242;
 
 // Require and start unified server
-require('../unified-server.js');
+const { startServer } = require('../unified-server.js');
+startServer(targetPort);
 
 if (shouldOpen) {
   const url = `http://localhost:${targetPort}`;

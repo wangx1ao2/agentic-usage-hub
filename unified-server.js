@@ -650,6 +650,15 @@ function buildDashboardData(tier = 'standard', agentFilter = 'all') {
     }
   }
 
+  // Calculate Month-to-date total cost for Subscription ROI analysis
+  const currentMonthPrefix = todayStr.slice(0, 7);
+  const thisMonthTimeline = timeline.filter(d => d.date && d.date.startsWith(currentMonthPrefix));
+  const thisMonthMainCost = thisMonthTimeline.reduce((s, d) => s + (d.totalCost || 0), 0);
+  const thisMonthImgCost = (imageAnalysis.daily || [])
+    .filter(d => d.date && d.date.startsWith(currentMonthPrefix))
+    .reduce((s, d) => s + (d.cost || 0), 0);
+  const thisMonthTotalCost = +(thisMonthMainCost + thisMonthImgCost).toFixed(2);
+
   const todaySummary = {
     date: todayStr,
     totalCost: +todayTotalCost.toFixed(4),
@@ -657,6 +666,7 @@ function buildDashboardData(tier = 'standard', agentFilter = 'all') {
     cacheReadTokens: todayCacheReadTokens,
     inputTokens: todayInputTokens,
     outputTokens: todayOutputTokens,
+    thisMonthCost: thisMonthTotalCost,
     byModel: todayByModel,
     images: {
       count: todayImgDaily.count || 0,
@@ -674,13 +684,19 @@ function buildDashboardData(tier = 'standard', agentFilter = 'all') {
       pricingTier: tier,
       totalDays: timeline.length,
       earliestMilestone: '2026-05-22',
-      earliestDescription: '2026-05-22 首次使用 OpenClaw 接入 DeepSeek API'
+      earliestDescription: '2026-05-22 首次使用 OpenClaw 接入 DeepSeek API',
+      subscriptionDefaults: {
+        defaultPlan: process.env.DEFAULT_SUBSCRIPTION_PLAN || 'chatgpt_plus',
+        monthlyFee: Number(process.env.DEFAULT_SUBSCRIPTION_FEE) || 20,
+        weeklyAllowance: Number(process.env.DEFAULT_WEEKLY_ALLOWANCE) || 130
+      }
     },
     totals: {
       totalCostUSD: +(totalCost + imageAnalysis.totals.totalCost).toFixed(2),
       totalTokens: totalTokens + imageAnalysis.totals.totalTokens,
       cacheReadTokens,
       cacheRate,
+      thisMonthCost: thisMonthTotalCost,
       formattedCost: '$' + (totalCost + imageAnalysis.totals.totalCost).toFixed(2),
       formattedTokens: ((totalTokens + imageAnalysis.totals.totalTokens) / 1e6).toFixed(1) + 'M',
       formattedCacheTokens: (cacheReadTokens / 1e6).toFixed(1) + 'M'
@@ -908,10 +924,14 @@ const server = http.createServer((req, res) => {
   });
 });
 
-if (require.main === module) {
-  server.listen(PORT, () => {
-    console.log(`Unified Agentic Dashboard running at http://localhost:${PORT}`);
+function startServer(port = (process.env.PORT || PORT || 4242)) {
+  return server.listen(port, () => {
+    console.log(`Unified Agentic Dashboard running at http://localhost:${port}`);
   });
+}
+
+if (require.main === module) {
+  startServer(process.env.PORT || PORT);
 }
 
 process.on('SIGINT', () => process.exit(0));
@@ -919,10 +939,12 @@ process.on('SIGTERM', () => process.exit(0));
 
 module.exports = {
   server,
+  startServer,
   buildDashboardData,
   getCachedDashboardData,
   getCodexData,
   PORT,
   PUBLIC_DIR
 };
+
 
