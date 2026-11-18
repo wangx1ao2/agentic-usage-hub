@@ -304,7 +304,7 @@ npx agentic-usage-hub -p 4242 -o
 本项目采用 MIT 协议完全开源：
 - **100% 本地离线**：不设服务端上报，不上传任何代码、会话或路径数据；
 - **无需任何 API Key**：启动无需填入任何私密 Token 或密码；
-- **完整自动化测试**：内置 31 项测试用例，覆盖安全路径穿越防御与多平台兼容性。
+- **完整自动化测试**：内置 50 项测试用例，覆盖安全路径穿越防御、多平台兼容性与 QoderWork CN 估算口径。
 
 - **GitHub**：[https://github.com/wangx1ao2/agentic-usage-hub](https://github.com/wangx1ao2/agentic-usage-hub)
 - **npm**：[https://www.npmjs.com/package/agentic-usage-hub](https://www.npmjs.com/package/agentic-usage-hub)

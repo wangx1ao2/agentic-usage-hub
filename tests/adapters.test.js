@@ -21,8 +21,7 @@ test('Adapters & Calculations Unit Tests', async (t) => {
     // Total = 0.075 + 0.015 + 0.25 = $0.34
     assert.equal(+costStandard.toFixed(4), 0.34);
 
-    // Flagship tier should be higher than standard
-    assert.ok(costFlagship > costStandard, 'Flagship cost should be higher than standard');
+    assert.equal(costFlagship, costStandard, 'Both tiers must use the same published GLM-5.3-Flash rate');
   });
 
   await t.test('2. ZCode getZCodeDaily returns array with valid period schema', () => {
@@ -64,6 +63,10 @@ test('Adapters & Calculations Unit Tests', async (t) => {
     assert.ok(typeof imgData.totals.totalTokens === 'number');
     assert.ok(Array.isArray(imgData.daily), 'daily timeline must be array');
     assert.ok(Array.isArray(imgData.recentImages), 'recentImages must be array');
+    assert.equal(imgData.costBasis, 'file-count-reference');
+    assert.equal(imgData.tokenBasis, 'file-count-equivalent');
+    assert.equal(imgData.usageAvailable, false);
+    assert.equal(imgData.includedInTotals, false);
   });
 
   await t.test('5. Antigravity Adapter returns daily usage records', () => {
@@ -147,17 +150,16 @@ test('Adapters & Calculations Unit Tests', async (t) => {
     assert.equal(fableInfo.canonicalName, 'claude-fable-5');
     assert.equal(fableInfo.company, 'Anthropic');
     assert.equal(fableInfo.agent, 'claude');
-    assert.equal(fableInfo.pricing.in, 5.00);
-    assert.equal(fableInfo.pricing.out, 25.00);
+    assert.equal(fableInfo.pricing.in, 10.00);
+    assert.equal(fableInfo.pricing.out, 50.00);
 
-    // 1M fresh in ($5), 500k out ($12.50), 200k cache ($0.10)
-    // 0.8M * 5 + 0.2M * 0.50 + 0.5M * 25 = 4.00 + 0.10 + 12.50 = 16.60
+    // 0.8M * 10 + 0.2M * 1 + 0.5M * 50 = 33.20
     const cost = calculateModelCost('claude-fable-5', 1_000_000, 500_000, 200_000);
-    assert.equal(+cost.toFixed(2), 16.60);
+    assert.equal(+cost.toFixed(2), 33.20);
 
     const c45Info = resolveModelInfo('claude-4.5-sonnet');
     assert.equal(c45Info.company, 'Anthropic');
-    assert.equal(c45Info.pricing.in, 3.50);
+    assert.equal(c45Info.pricing.in, 3.00);
   });
 
   await t.test('12. Models Pricing: resolves and calculates Grok 4.6 accurately', () => {
@@ -165,13 +167,13 @@ test('Adapters & Calculations Unit Tests', async (t) => {
     const grok46Info = resolveModelInfo('xai/grok-4.6');
     assert.equal(grok46Info.canonicalName, 'grok-4.6');
     assert.equal(grok46Info.company, 'xAI');
-    assert.equal(grok46Info.pricing.in, 4.00);
-    assert.equal(grok46Info.pricing.out, 20.00);
+    assert.equal(grok46Info.pricing.in, 2.00);
+    assert.equal(grok46Info.pricing.out, 6.00);
 
     // 1M in (200k cache, 800k fresh), 500k out
-    // 0.8M * 4 + 0.2M * 0.80 + 0.5M * 20 = 3.20 + 0.16 + 10.00 = 13.36
+    // 0.8M * 2 + 0.2M * 0.50 + 0.5M * 6 = 4.70
     const cost = calculateModelCost('grok-4.6', 1_000_000, 500_000, 200_000);
-    assert.equal(+cost.toFixed(2), 13.36);
+    assert.equal(+cost.toFixed(2), 4.70);
 
     const grok4Info = resolveModelInfo('grok-4');
     assert.equal(grok4Info.company, 'xAI');

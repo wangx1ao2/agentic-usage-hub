@@ -7,8 +7,8 @@
  */
 
 const readline = require('readline');
-const { buildDashboardData } = require('../unified-server');
-const projectAdapter = require('../project-adapter');
+const { queryDashboard, queryProjects, startWarmup } = require('../lib/usage-service');
+const { isObject, validateToolArguments } = require('../lib/validation');
 const pkg = require('../package.json');
 
 const PROTOCOL_VERSION = '2024-11-05';
@@ -16,7 +16,7 @@ const PROTOCOL_VERSION = '2024-11-05';
 const TOOLS = [
   {
     name: 'get_usage_today',
-    description: 'Get real-time token throughput, prompt cache hit rate, USD cost estimate, and model breakdown across all AI coding agents (Codex, Claude, Gemini/Antigravity, Grok, DeepSeek, ZCode) for today.',
+    description: 'Get today\'s logged or estimated token counts, cache reads, USD cost reference and model/source breakdown. QoderWork and Antigravity token counts are estimates; this query reports daily totals, not streaming throughput.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -30,7 +30,7 @@ const TOOLS = [
   },
   {
     name: 'get_usage_range',
-    description: 'Get historical token usage and estimated USD cost for a specific date range, grouped by AI company/vendor or by individual model.',
+    description: 'Get historical token usage and estimated USD cost for a specific date range, grouped by AI company/vendor or by individual model. Includes QoderWork CN sessions (token counts estimated from message body since the platform masks usage).',
     inputSchema: {
       type: 'object',
       properties: {
@@ -52,18 +52,33 @@ const TOOLS = [
   },
   {
     name: 'get_project_breakdown',
-    description: 'Get token consumption and cost attribution broken down by physical local workspace project and Git repository.',
+    description: 'Get token consumption and cost attribution grouped by local workspace path.',
     inputSchema: {
       type: 'object',
       properties: {
         limit: {
-          type: 'number',
+          type: 'integer',
+          minimum: 1,
+          maximum: 50,
           description: 'Maximum number of top projects to return (default: 10)'
         }
       }
     }
   }
 ];
+for (const tool of TOOLS) {
+  tool.inputSchema.additionalProperties = false;
+  Object.assign(tool.inputSchema.properties, {
+    actualOnly: { type: 'boolean', description: 'Keep logged token counts and exclude body-based token estimates.' },
+    pricingMode: { type: 'string', enum: ['recorded', 'current'], description: 'Recorded/first-index prices, or selected catalog recalculation.' },
+    pricingVersion: { type: 'string', pattern: '^catalog-[a-f0-9]{24}$', description: 'Saved catalog version; requires current mode.' }
+  });
+  if (tool.name !== 'get_usage_today') Object.assign(tool.inputSchema.properties, {
+    tier: { type: 'string', enum: ['standard', 'flagship'] },
+    agent: { type: 'string', enum: ['all', 'codex', 'claude', 'grok', 'zcode', 'qwen', 'qoderwork', 'antigravity', 'openclaw', 'reasonix', 'api'] },
+    startDate: { type: 'string', description: 'Inclusive YYYY-MM-DD' }, endDate: { type: 'string', description: 'Inclusive YYYY-MM-DD' }
+  });
+}
 
 function handleInitialize(id, params) {
   return {
@@ -92,21 +107,26 @@ function handleToolsList(id) {
   };
 }
 
-function handleToolCall(id, params) {
-  const { name, arguments: args = {} } = params || {};
-
+async function handleToolCall(id, params) {
   try {
+    if (!isObject(params) || typeof params.name !== 'string') {
+      return { jsonrpc: '2.0', id, error: { code: -32602, message: 'tools/call requires an object with a tool name' } };
+    }
+    const { name } = params;
+    const args = validateToolArguments(name, params.arguments);
     if (name === 'get_usage_today') {
       const tier = args.tier || 'standard';
-      const data = buildDashboardData(tier, 'all');
+      const data = await queryDashboard(tier, 'all', args);
       const today = data.todaySummary || {};
 
       const modelsSummary = Object.entries(today.byModel || {}).map(([mName, m]) => ({
         model: mName,
         company: m.company,
-        costUSD: +Number(m.cost || 0).toFixed(4),
+        costUSD: m.unpriced && !m.cost ? null : +Number(m.cost || 0).toFixed(6),
         totalTokens: m.tokens || 0,
-        cacheTokens: m.cacheTokens || 0
+        cacheTokens: m.cacheTokens || 0,
+        agents: m.agents || [m.agent], bySource: m.bySource || {}, unpriced: !!m.unpriced, estimated: !!m.estimated,
+        costComplete: m.costComplete !== false && !m.unpriced, unpricedTokens: m.unpricedTokens || 0
       }));
 
       const report = {
@@ -116,8 +136,11 @@ function handleToolCall(id, params) {
         cacheReadTokens: today.cacheReadTokens,
         inputTokens: today.inputTokens,
         outputTokens: today.outputTokens,
+        costComplete: !today.unpricedTokens && modelsSummary.every(row => row.costComplete),
+        unpricedTokens: today.unpricedTokens || 0,
         generatedImages: today.images || { count: 0, cost: 0 },
-        activeModels: modelsSummary
+        activeModels: modelsSummary,
+        meta: data.meta
       };
 
       return {
@@ -136,7 +159,7 @@ function handleToolCall(id, params) {
 
     if (name === 'get_usage_range') {
       const { startDate, endDate, groupBy = 'company' } = args;
-      const data = buildDashboardData('standard', 'all');
+      const data = await queryDashboard(args.tier || 'standard', args.agent || 'all', args);
       const timeline = data.timeline || [];
 
       let filtered = timeline;
@@ -151,16 +174,24 @@ function handleToolCall(id, params) {
       const totalCost = filtered.reduce((s, d) => s + (d.totalCost || 0), 0);
       const cacheReadTokens = filtered.reduce((s, d) => s + (d.cacheReadTokens || 0), 0);
 
-      const groups = {};
+      const groups = Object.create(null);
       for (const day of filtered) {
         for (const [mName, mData] of Object.entries(day.byModel || {})) {
           const key = groupBy === 'model' ? mName : (mData.company || 'Unknown');
           if (!groups[key]) {
-            groups[key] = { name: key, totalCostUSD: 0, totalTokens: 0, cacheTokens: 0 };
+            groups[key] = { name: key, totalCostUSD: 0, totalTokens: 0, cacheTokens: 0,
+              costComplete: true, unpricedTokens: 0, agents: [], bySource: Object.create(null) };
           }
           groups[key].totalCostUSD += (mData.cost || 0);
           groups[key].totalTokens += (mData.tokens || 0);
           groups[key].cacheTokens += (mData.cacheTokens || 0);
+          groups[key].costComplete &&= mData.costComplete !== false && !mData.unpriced;
+          groups[key].unpricedTokens += mData.unpricedTokens || 0;
+          for (const [source, metrics] of Object.entries(mData.bySource || {})) {
+            if (!groups[key].agents.includes(source)) groups[key].agents.push(source);
+            const target = groups[key].bySource[source] ||= { tokens: 0, cost: 0, cacheTokens: 0 };
+            target.tokens += metrics.tokens || 0; target.cost += metrics.cost || 0; target.cacheTokens += metrics.cacheTokens || 0;
+          }
         }
       }
 
@@ -177,8 +208,11 @@ function handleToolCall(id, params) {
         totalCostUSD: +totalCost.toFixed(4),
         totalTokens,
         cacheReadTokens,
+        costComplete: breakdown.every(row => row.costComplete),
+        unpricedTokens: breakdown.reduce((sum, row) => sum + row.unpricedTokens, 0),
         groupBy,
-        breakdown
+        breakdown,
+        meta: data.meta
       };
 
       return {
@@ -196,23 +230,30 @@ function handleToolCall(id, params) {
     }
 
     if (name === 'get_project_breakdown') {
-      const limit = Math.max(1, Math.min(args.limit || 10, 50));
-      const projects = projectAdapter.getProjectAttributionList();
+      const limit = args.limit || 10;
+      const { limit: _, ...filters } = args;
+      const projects = await queryProjects(filters);
       const list = (projects || []).slice(0, limit);
+      const grandCost = (projects || []).reduce((s, p) => s + (p.totalCost || 0), 0);
 
       const report = {
         totalProjects: (projects || []).length,
         returned: list.length,
         projects: list.map(p => ({
+          id: p.id,
           name: p.name,
-          category: p.category,
-          path: p.path,
+          primaryPath: p.primaryPath,
+          pathCount: p.pathCount,
           totalTokens: p.totalTokens,
           formattedTokens: p.formattedTokens,
           totalCostUSD: p.totalCost,
-          percentage: p.percentage + '%',
+          costSharePercent: grandCost > 0 ? +((p.totalCost / grandCost) * 100).toFixed(1) : 0,
           agents: p.agents,
-          topModels: p.topModels
+          topModels: p.topModels,
+          lastActive: p.lastActive,
+          todayTokens: p.todayTokens, todayCostUSD: p.todayCost, daily: p.daily,
+          attribution: p.attribution, requestCount: p.requestCount, costComplete: p.costComplete,
+          estimatedTokens: p.estimatedTokens
         }))
       };
 
@@ -243,14 +284,38 @@ function handleToolCall(id, params) {
       jsonrpc: '2.0',
       id,
       error: {
-        code: -32603,
-        message: `Internal error executing tool "${name}": ${err.message}`
+        code: err.code === -32602 || err.statusCode === 400 ? -32602 : -32603,
+        message: err.message
       }
     };
   }
 }
 
+async function handleMessage(message) {
+  const validId = value => value === null || typeof value === 'string' || (typeof value === 'number' && Number.isFinite(value));
+  if (!isObject(message) || message.jsonrpc !== '2.0' || typeof message.method !== 'string' || !message.method
+    || (Object.hasOwn(message, 'id') && !validId(message.id))) {
+    return { jsonrpc: '2.0', id: null, error: { code: -32600, message: 'Invalid JSON-RPC request' } };
+  }
+  const { id, method, params } = message;
+  const notification = !Object.hasOwn(message, 'id');
+  if (params !== undefined && !isObject(params)) {
+    return notification ? null : { jsonrpc: '2.0', id, error: { code: -32602, message: 'params must be an object' } };
+  }
+  if (notification) return null;
+  switch (method) {
+    case 'initialize': return handleInitialize(id, params);
+    case 'ping': return { jsonrpc: '2.0', id, result: {} };
+    case 'tools/list': return handleToolsList(id);
+    case 'tools/call': return handleToolCall(id, params);
+    default: return { jsonrpc: '2.0', id, error: { code: -32601, message: `Method not found: ${method}` } };
+  }
+}
+
 function startServer() {
+  // Use the same bounded background snapshot query as the HTTP interface.
+  startWarmup();
+
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
@@ -273,40 +338,15 @@ function startServer() {
       return;
     }
 
-    const { id, method, params } = message;
-
-    // Handle notifications (no response needed)
-    if (!id && method && method.startsWith('notifications/')) {
-      return;
-    }
-
-    let response;
-    switch (method) {
-      case 'initialize':
-        response = handleInitialize(id, params);
-        break;
-      case 'ping':
-        response = { jsonrpc: '2.0', id, result: {} };
-        break;
-      case 'tools/list':
-        response = handleToolsList(id);
-        break;
-      case 'tools/call':
-        response = handleToolCall(id, params);
-        break;
-      default:
-        response = {
-          jsonrpc: '2.0',
-          id,
-          error: { code: -32601, message: `Method not found: ${method}` }
-        };
-        break;
-    }
-
-    process.stdout.write(JSON.stringify(response) + '\n');
+    handleMessage(message).then(response => {
+      if (response) process.stdout.write(JSON.stringify(response) + '\n');
+    }).catch(() => {
+      process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id: null, error: { code: -32603, message: 'Internal server error' } }) + '\n');
+    });
   });
 
   process.stderr.write(`[agentic-usage-hub MCP] Stdio server initialized (v${pkg.version || '1.0.0'})\n`);
+  return rl;
 }
 
 if (require.main === module) {
@@ -318,5 +358,6 @@ module.exports = {
   handleInitialize,
   handleToolsList,
   handleToolCall,
+  handleMessage,
   TOOLS
 };

@@ -1,14 +1,17 @@
 {
   "name": "agentic-usage-hub",
   "version": "1.0.1",
-  "description": "Local-first token usage, cache-hit and USD cost analytics dashboard for AI coding agents: OpenAI Codex CLI, Claude Code, Google Antigravity/Gemini, xAI Grok, DeepSeek OpenClaw/Reasonix and Zhipu ZCode. Runs fully offline via npx, with per-model pricing, live today view and per-project attribution.",
+  "description": "Local-first token usage, cache-hit and USD cost analytics dashboard for AI coding agents: OpenAI Codex CLI, Claude Code, Google Antigravity/Gemini, xAI Grok, DeepSeek OpenClaw/Reasonix, Zhipu ZCode and Tongyi Qwen Code. Runs fully offline via npx, with per-model pricing, live today view and per-project attribution.",
   "main": "unified-server.js",
   "bin": {
     "agentic-usage-hub": "bin/agentic-usage-hub.js"
   },
   "scripts": {
     "start": "node unified-server.js",
-    "test": "node --test tests/api.test.js tests/adapters.test.js tests/mcp.test.js",
+    "test": "node --require ./tests/fixture-environment.cjs --test --test-concurrency=1 \"tests/*.test.js\"",
+    "test:ui": "node tests/run-ui-check.cjs",
+    "test:motion": "node tests/run-ui-check.cjs --motion",
+    "benchmark": "node tests/index-benchmark.cjs",
     "daily": "ccusage codex daily",
     "monthly": "ccusage codex monthly"
   },
@@ -29,6 +32,8 @@
     "deepseek",
     "zcode",
     "zhipu",
+    "qwen",
+    "tongyi",
     "ai-agent",
     "developer-tools",
     "ccusage",
@@ -44,6 +49,7 @@
   "homepage": "https://github.com/wangx1ao2/agentic-usage-hub#readme",
   "files": [
     "bin",
+    "lib",
     "mcp",
     "public",
     "*.js",

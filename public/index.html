@@ -13,16 +13,23 @@
           effective = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
         }
         document.documentElement.setAttribute('data-theme', effective);
+        var motion = localStorage.getItem('agentic_motion_mode') || 'full';
+        if (!['full', 'light', 'off'].includes(motion)) motion = 'full';
+        document.documentElement.setAttribute('data-motion', motion);
+        document.documentElement.setAttribute('data-motion-effective', window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'off' : motion);
       } catch (e) {}
     })();
   </script>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=20261013-codex-live-3">
+  <link rel="stylesheet" href="motion.css?v=20261018-2">
   <script src="chart.umd.js"></script>
 </head>
 <body>
   <!-- Background Ambient Glows -->
-  <div class="glow-bg glow-1"></div>
-  <div class="glow-bg glow-2"></div>
+  <div class="ambient-background" aria-hidden="true">
+    <div class="glow-bg glow-1"></div>
+    <div class="glow-bg glow-2"></div>
+  </div>
 
   <div class="container">
     <!-- Header -->
@@ -36,35 +43,48 @@
         <div>
           <div class="brand-title">
             <h1>Agentic Usage Hub</h1>
-            <span class="badge badge-accent">厂商全景版</span>
           </div>
-          <p class="brand-sub">OpenAI Codex · 智谱 ZCode · Google Antigravity · DeepSeek 统一计量与可视化看板</p>
+          <p class="brand-sub">本地智能体使用分析</p>
         </div>
       </div>
 
       <div class="header-actions">
+        <details class="settings-popover" id="dashboard-settings">
+          <summary class="btn-secondary" aria-label="外观与计价设置"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M9 3h6l1 3 3 1 2 5-2 5-3 1-1 3H9l-1-3-3-1-2-5 2-5 3-1z"/><circle cx="12" cy="12" r="3"/></svg><span>设置</span></summary>
+          <div class="settings-panel">
+            <p class="settings-label">外观与计价</p>
         <!-- Theme Mode Switcher (Auto / Light / Dark) -->
         <div class="toggle-group" id="theme-toggle-group" title="切换颜色模式 (自动跟随系统 / 浅色 / 深色)">
           <button id="theme-btn-auto" class="btn-toggle active" onclick="setThemeMode('auto')" title="自动跟随系统颜色设置">
-            💻 自动
+            自动
           </button>
           <button id="theme-btn-light" class="btn-toggle" onclick="setThemeMode('light')" title="浅色模式">
-            ☀️ 浅色
+            浅色
           </button>
           <button id="theme-btn-dark" class="btn-toggle" onclick="setThemeMode('dark')" title="深色模式">
-            🌙 深色
+            深色
           </button>
         </div>
 
+        <div class="toggle-group motion-settings" role="group" aria-label="动效强度">
+          <span class="motion-settings-label">动效</span>
+          <button type="button" class="btn-toggle" data-motion-mode="full" aria-pressed="true">完整</button>
+          <button type="button" class="btn-toggle" data-motion-mode="light" aria-pressed="false">轻量</button>
+          <button type="button" class="btn-toggle" data-motion-mode="off" aria-pressed="false">关闭</button>
+        </div>
+        <p class="motion-preference-note" id="motion-preference-note">卡片依次入场、切页过渡与数据反馈</p>
         <div class="toggle-group" title="切换 ZCode 模型的折算计费标准">
           <span class="toggle-label">ZCode 定价:</span>
-          <button id="tier-standard" class="btn-toggle active" onclick="setPricingTier('standard')">官方标准目录价</button>
+          <button id="tier-standard" class="btn-toggle active" onclick="setPricingTier('standard')">标准参考价</button>
           <button id="tier-flagship" class="btn-toggle" onclick="setPricingTier('flagship')">旗舰模型折算价</button>
         </div>
 
-        <button id="btn-pricing-matrix" class="btn-toggle" onclick="togglePricingModal()" title="查看 Claude、Grok、GPT、Gemini、GLM 等主流模型官方计费价目标准">
-          💎 模型计费速查
+          <button id="btn-pricing-matrix" class="btn-toggle" onclick="togglePricingModal()" title="查看 Claude、Grok、GPT、Gemini、GLM 等模型参考费率">
+          模型参考费率
         </button>
+
+          </div>
+        </details>
 
         <div class="refresh-container">
           <button id="btn-refresh" class="btn-primary" onclick="refreshData()">
@@ -75,16 +95,16 @@
           </button>
           <div class="last-refreshed-badge" title="数据最后成功拉取与计算的时间">
             <span class="pulse-dot"></span>
-            <span class="last-refreshed-text">上次刷新: <strong id="header-last-updated" class="font-mono">--:--:--</strong></span>
+            <span class="last-refreshed-text">最后拉取: <strong id="header-last-updated" class="font-mono">—</strong></span>
           </div>
         </div>
       </div>
     </header>
 
     <!-- Global Connection Error Banner -->
-    <div id="global-error-banner" class="global-error-banner" style="display: none;">
+    <div id="global-error-banner" class="global-error-banner" role="alert" style="display: none;">
       <div class="error-left">
-        <span class="error-icon">⚠️</span>
+        <svg class="error-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m12 3 10 18H2zM12 9v5M12 17v1"/></svg>
         <span class="error-msg" id="global-error-text">数据拉取失败，请检查本地服务连接</span>
       </div>
       <button class="btn-retry" onclick="loadDashboard()">点击重试</button>
@@ -92,44 +112,115 @@
 
     <!-- Main View Switcher Bar -->
     <div class="main-nav-bar">
-      <div class="view-mode-tabs">
-        <button class="view-tab-btn" id="btn-view-today" onclick="switchViewMode('today')">
+      <div class="view-mode-tabs" role="tablist" aria-label="主视图">
+        <span class="view-tab-indicator" aria-hidden="true"></span>
+        <button class="view-tab-btn" id="btn-view-today" role="tab" aria-controls="view-today" aria-selected="false" tabindex="-1" onclick="switchViewMode('today')">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          ⚡ 今日实时看板 (Today)
+          今日
         </button>
-        <button class="view-tab-btn active" id="btn-view-timeline" onclick="switchViewMode('timeline')">
+        <button class="view-tab-btn" id="btn-view-live" role="tab" aria-controls="view-live" aria-selected="false" tabindex="-1" onclick="switchViewMode('live')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>
+          实时
+        </button>
+        <button class="view-tab-btn active" id="btn-view-timeline" role="tab" aria-controls="view-timeline" aria-selected="true" tabindex="0" onclick="switchViewMode('timeline')">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 9l-5 5-4-4-6 6"/></svg>
-          时间走势视图 (Timeline)
+          趋势
         </button>
-        <button class="view-tab-btn" id="btn-view-projects" onclick="switchViewMode('projects')">
+        <button class="view-tab-btn" id="btn-view-projects" role="tab" aria-controls="view-projects" aria-selected="false" tabindex="-1" onclick="switchViewMode('projects')">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-          本地工程归因 (Projects)
-          <span class="view-tab-badge" id="badge-projects-count">43</span>
+          项目
+          <span class="view-tab-badge" id="badge-projects-count">—</span>
         </button>
-        <button class="view-tab-btn" id="btn-view-gallery" onclick="switchViewMode('gallery')">
+        <button class="view-tab-btn" id="btn-view-gallery" role="tab" aria-controls="view-gallery" aria-selected="false" tabindex="-1" onclick="switchViewMode('gallery')">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-          生图资产画廊 (Studio)
-          <span class="view-tab-badge badge-rose" id="badge-gallery-count">699</span>
+          画廊
+          <span class="view-tab-badge badge-rose" id="badge-gallery-count">—</span>
         </button>
       </div>
 
       <div class="live-status">
         <span class="status-pulse"></span>
-        <span id="last-updated">正在连接本地数据库...</span>
+        <span id="last-updated" role="status" aria-live="polite">正在连接本地数据库...</span>
       </div>
     </div>
 
+    <div class="analysis-controls" aria-label="统计口径与来源">
+      <button type="button" id="btn-sources" class="btn-secondary btn-sm">来源状态</button>
+      <label class="actual-only-control" title="仅保留日志记录的 Token；金额仍可能按目录价估算"><input type="checkbox" id="actual-only">仅实际记录</label>
+      <label>金额口径 <select id="pricing-mode" aria-label="金额口径"><option value="recorded">日志 / 首次索引费率</option><option value="current">当前费率重算</option></select></label>
+      <span class="export-controls">导出趋势所选区间 <button type="button" id="export-json" class="btn-secondary btn-sm">JSON</button><button type="button" id="export-csv" class="btn-secondary btn-sm">CSV</button></span>
+      <span id="estimate-summary" role="status">正在读取统计口径…</span>
+      <span id="pricing-basis" role="status"></span><span id="export-status" role="status"></span>
+    </div>
+    <details class="cost-disclosure">
+      <summary>API 等值估算 <span>查看统计口径</span></summary>
+    <div class="cost-notice" id="cost-notice" role="note">
+      美元金额是日志金额或 API 目录价等值估算，不是订阅账单；QoderWork 的 Token 与金额按消息正文估算。
+    </div>
+    </details>
+
+    <div id="view-live" role="tabpanel" aria-labelledby="btn-view-live" tabindex="0" class="view-content" style="display: none;">
+      <section class="today-panel-card codex-live-panel" aria-labelledby="codex-live-title">
+        <div class="panel-card-header codex-live-heading">
+          <div>
+            <h3 class="panel-card-title" id="codex-live-title">Codex 对话用量与生图产出</h3>
+            <p class="codex-live-description">对话 Token 按最近 60 秒计算；图像工具的真实 Token 需单独记录</p>
+          </div>
+          <span class="panel-card-badge" id="codex-live-status" role="status">等待读取</span>
+        </div>
+        <div class="codex-live-controls">
+          <button type="button" class="btn-secondary btn-sm" id="codex-live-toggle" role="switch" aria-checked="true">暂停自动更新</button>
+          <label for="codex-live-interval">刷新频率
+            <select id="codex-live-interval"><option value="2000">2 秒（推荐）</option><option value="1000">1 秒</option><option value="5000">5 秒（省资源）</option></select>
+          </label>
+          <button type="button" class="btn-secondary btn-sm" id="codex-live-refresh">刷新一次</button>
+          <span id="codex-live-refresh-state" role="status">进入实时页后自动更新</span>
+        </div>
+        <p class="codex-live-resource-note">仅在此页可见时自动更新；无近期对话用量时放慢到至少 5 秒，图片目录每 15 秒检查。离开此页或切到浏览器后台后暂停；自动更新开关与刷新频率会记住。</p>
+        <div class="codex-live-metrics">
+          <div><span>对话合计 Token/s</span><strong class="font-mono" id="codex-live-total">—</strong><small id="codex-live-count">近期活跃会话 —</small></div>
+          <div><span>新输入 Token/s</span><strong class="font-mono" id="codex-live-input">—</strong><small>输入中扣除缓存读取</small></div>
+          <div><span>缓存读取 Token/s</span><strong class="font-mono" id="codex-live-cache">—</strong><small>重复使用的上下文</small></div>
+          <div><span>输出 Token/s</span><strong class="font-mono" id="codex-live-output">—</strong><small>包含已记录的推理 Token</small></div>
+        </div>
+        <section class="live-history" aria-labelledby="live-history-title">
+          <div class="live-history-heading"><strong id="live-history-title">用量检查轨迹</strong><small>每个点是最近 60 秒窗口均值 · Token/s，不能累加为总量</small></div>
+          <svg id="codex-live-history" viewBox="0 0 600 70" preserveAspectRatio="none" role="img" aria-label="等待有效的实时用量采样"></svg>
+          <div class="live-history-axis"><span id="live-history-start">—</span><span>最近 2 分钟的检查记录</span><span id="live-history-end">—</span></div>
+          <p id="live-history-note" class="live-history-empty">首次有效响应后显示；暂停与断联保留缺口。</p>
+        </section>
+        <section class="codex-live-images" aria-labelledby="codex-live-images-title">
+          <div class="codex-live-image-heading"><h4 id="codex-live-images-title">生图工具 · 独立统计</h4><span id="codex-live-image-status">等待检查图片目录</span></div>
+          <div class="codex-live-image-metrics">
+            <div><span>图像 Token/s</span><strong class="font-mono">—</strong><small>本地记录未提供真实图像 Token</small></div>
+            <div><span>最近 5 分钟新图文件</span><strong class="font-mono" id="codex-live-image-count">—</strong><small id="codex-live-image-minute">最近 60 秒 —</small></div>
+            <div><span>最近图片写入</span><strong class="font-mono" id="codex-live-image-latest">—</strong><small id="codex-live-image-checked">图片目录每 15 秒检查</small></div>
+          </div>
+          <p>等待生图时，对话 Token 可以是 0，图像工具仍可能在工作。这里只观察本地 PNG 文件；不把图片数量或“每张 20K Token 等值”当作实际 Token。<button type="button" class="view-all-link" onclick="switchViewMode('gallery')">查看画廊 →</button></p>
+        </section>
+        <div class="codex-live-table-scroll" tabindex="0" aria-label="Codex 会话消耗明细，可横向滚动">
+          <table class="codex-live-table">
+            <caption>最近 5 分钟有对话用量记录的会话 · 速率单位 Token/s</caption>
+            <thead><tr><th scope="col">会话 / 工作目录</th><th scope="col">模型</th><th scope="col">新输入/s</th><th scope="col">缓存/s</th><th scope="col">输出/s</th><th scope="col">合计/s</th><th scope="col">最近用量</th></tr></thead>
+            <tbody id="codex-live-sessions"><tr><td colspan="7">打开实时页后自动读取本地日志</td></tr></tbody>
+          </table>
+        </div>
+        <p class="codex-live-footnote">这是按请求日志计算的窗口平均消耗，包含缓存读取；用量可能在请求完成后才写入，并非逐秒生成速度。“近期活跃”指最近 60 秒有用量记录，不代表进程状态。</p>
+        <p class="codex-live-updated" id="codex-live-updated">更新于 —</p>
+      </section>
+    </div>
+
     <!-- VIEW 0: Today's Live Dashboard -->
-    <div id="view-today" class="view-content" style="display: none;">
+    <div id="view-today" role="tabpanel" aria-labelledby="btn-view-today" tabindex="0" class="view-content" style="display: none;">
       <!-- Hero Banner -->
       <div class="today-hero-header">
         <div class="today-hero-info">
           <div class="today-tag-row">
-            <span class="today-badge-live"><span class="pulse-dot"></span> 实时运行中</span>
-            <span class="today-date-tag" id="today-date-badge">📅 正在获取今日日期...</span>
+            <span class="today-badge-live"><span class="pulse-dot"></span> <span id="today-state">等待数据</span></span>
+            <span class="today-date-tag" id="today-date-badge">正在获取今日日期...</span>
           </div>
-          <h2 class="today-title">今日智能体与大模型消耗实时总览</h2>
-          <p class="today-subtitle">聚合今日 OpenAI Codex、Claude Code、xAI Grok、Google Gemini、智谱 ZCode、DeepSeek 与图像生成全量活跃实录</p>
+          <h2 class="today-title">今日用量</h2>
+          <p class="today-subtitle">今日模型消耗、工程活动与图像产出</p>
         </div>
         <div class="today-quick-actions">
           <button class="btn-primary btn-sm" onclick="refreshData()">
@@ -143,29 +234,29 @@
       <div class="today-metrics-grid">
         <div class="metric-card card-glow-blue">
           <div class="card-header">
-            <span class="card-title">今日总消耗金额 (USD)</span>
-            <span class="card-tag tag-blue">主模型+生图</span>
+            <span class="card-title">今日请求 API 等值估算 (USD)</span>
+            <span class="card-tag tag-blue">日志折算</span>
           </div>
-          <div class="card-value font-mono text-emerald" id="today-stat-cost">$0.00</div>
-          <div class="card-sub" id="today-stat-cost-sub">主模型 $0.00 · 生图 $0.00</div>
+          <div class="card-value font-mono text-emerald" id="today-stat-cost">—</div>
+          <div class="card-sub" id="today-stat-cost-sub">全部来源请求 · 图像工具费用未记录</div>
         </div>
 
         <div class="metric-card card-glow-emerald">
           <div class="card-header">
-            <span class="card-title">今日 Token 吞吐总计</span>
-            <span class="card-tag tag-emerald">统一 Token 刻度</span>
+            <span class="card-title">今日模型 Token</span>
+            <span class="card-tag tag-emerald">含缓存</span>
           </div>
-          <div class="card-value font-mono" id="today-stat-tokens">0</div>
+          <div class="card-value font-mono" id="today-stat-tokens">—</div>
           <div class="card-sub" id="today-stat-tokens-sub">含上下文缓存读取</div>
         </div>
 
         <div class="metric-card card-glow-purple">
           <div class="card-header">
-            <span class="card-title">今日缓存节约 (Cache Hit)</span>
+            <span class="card-title">今日缓存读取</span>
             <span class="card-tag tag-purple">Prompt 缓存</span>
           </div>
-          <div class="card-value font-mono" id="today-stat-cache">0</div>
-          <div class="card-sub" id="today-stat-cache-sub">缓存命中率: --%</div>
+          <div class="card-value font-mono" id="today-stat-cache">—</div>
+          <div class="card-sub" id="today-stat-cache-sub">缓存读取占比 —</div>
         </div>
 
         <div class="metric-card card-glow-rose">
@@ -173,18 +264,20 @@
             <span class="card-title">今日生图产出 (GPT-Image-2)</span>
             <span class="card-tag tag-rose">Codex 自动化</span>
           </div>
-          <div class="card-value font-mono text-rose" id="today-stat-images">0 张</div>
-          <div class="card-sub" id="today-stat-images-sub">折合 $0.00 · 0 Tokens</div>
+          <div class="card-value font-mono text-rose" id="today-stat-images">—</div>
+          <div class="card-sub" id="today-stat-images-sub">—</div>
         </div>
       </div>
 
       <!-- Today Deep Breakdown Panels (Two columns) -->
+
+
       <div class="today-details-grid">
         <!-- Left: Today Models Breakdown -->
         <div class="today-panel-card">
           <div class="panel-card-header">
-            <div class="panel-card-title">🤖 今日模型阵营与消耗结构</div>
-            <span class="panel-card-badge">实时构成</span>
+            <div class="panel-card-title">今日模型阵营与消耗结构</div>
+            <span class="panel-card-badge">消耗构成</span>
           </div>
 
           <div class="today-proportional-bar" id="today-proportional-bar">
@@ -199,7 +292,7 @@
         <!-- Right: Today Active Workspaces & Image stream -->
         <div class="today-panel-card">
           <div class="panel-card-header">
-            <div class="panel-card-title">💼 今日活跃工程与生图成果</div>
+            <div class="panel-card-title">今日活跃工程与生图成果</div>
             <span class="panel-card-badge" id="today-active-badge">活跃工作区</span>
           </div>
 
@@ -208,8 +301,8 @@
           </div>
 
           <div class="today-gallery-preview-header">
-            <span>🖼️ 今日最新生成的图片成果</span>
-            <a href="javascript:void(0)" onclick="switchViewMode('gallery')" class="view-all-link">查看全部 →</a>
+            <span>今日最新生成的图片成果</span>
+            <button type="button" onclick="showTodayGallery()" class="view-all-link">查看全部 →</button>
           </div>
 
           <div class="today-image-strip" id="today-image-strip">
@@ -217,11 +310,204 @@
           </div>
         </div>
       </div>
+
+      <section class="today-panel-card quota-history-panel" aria-labelledby="quota-history-title">
+        <div class="panel-card-header quota-history-heading">
+          <div>
+            <h3 class="panel-card-title" id="quota-history-title">Codex 每日额度与美元估算</h3>
+            <p class="quota-history-description">100% 算一份五小时额度；美元含 Codex 会话与订阅桥接 API 的目录价等值。图像工具真实费用未记录，不加入文件数估算。</p>
+          </div>
+          <div class="quota-history-controls">
+            <label for="quota-history-date">统计日期</label>
+            <input type="date" id="quota-history-date" onchange="selectQuotaDate(this.value)">
+            <button type="button" class="btn-secondary btn-sm" onclick="selectQuotaDate(appState.cachedData.meta.today)">今天</button>
+          </div>
+        </div>
+        <div class="quota-summary-grid" aria-live="polite">
+          <div class="quota-summary-card"><span>累计五小时额度</span><strong class="font-mono" id="quota-day-units">—</strong><small id="quota-day-percent">正在读取额度历史...</small></div>
+          <div class="quota-summary-card"><span>当日 Codex 请求 API 等值</span><strong class="font-mono" id="quota-day-cost">—</strong><small id="quota-day-cost-note">按请求日志折算</small></div>
+          <div class="quota-summary-card"><span>每 100% 额度估算均值</span><strong class="font-mono" id="quota-day-average">—</strong><small id="quota-day-average-note">按可对齐的额度增长与金额计算</small></div>
+        </div>
+        <p class="quota-scroll-hint">左右滑动表格可查看全部明细</p>
+        <div class="quota-table-scroll" tabindex="0" aria-label="五小时窗口明细，可横向滚动">
+          <table class="quota-history-table">
+            <caption id="quota-window-caption">当日每个五小时窗口</caption>
+            <thead><tr><th>五小时窗口</th><th>当天消耗额度</th><th>当天 API 等值</th><th>每 100% 金额</th><th>估算依据</th></tr></thead>
+            <tbody id="quota-window-rows"><tr><td colspan="5" class="quota-empty">额度历史正在加载...</td></tr></tbody>
+          </table>
+        </div>
+        <p class="quota-history-footnote" id="quota-history-note">用满窗口显示首次达到 100% 时的金额；部分窗口按已观察到的额度增长推算，后续模型和任务变化会影响估值。</p>
+        <div class="quota-history-heading quota-daily-heading">
+          <h4>每日历史</h4>
+          <label>显示 <select id="quota-history-range" onchange="setQuotaHistoryRange(this.value)"><option value="7">最近 7 天</option><option value="30">最近 30 天</option><option value="all">全部记录</option></select></label>
+        </div>
+        <div class="quota-table-scroll" tabindex="0" aria-label="每日额度历史，可横向滚动">
+          <table class="quota-history-table">
+            <thead><tr><th>日期</th><th>累计已用额度</th><th>额度份数</th><th>Codex API 等值</th><th>每 100% 估算均值</th><th>记录到 100% 的窗口</th></tr></thead>
+            <tbody id="quota-daily-rows"><tr><td colspan="6" class="quota-empty">暂无历史记录</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Today Subscription ROI & Quota Section (启发一: 订阅制回本率与配额价值比 - 置于底部) -->
+      <div class="today-subscription-section" id="today-subscription-section">
+        <div class="today-sub-header">
+          <div class="today-sub-title-group">
+            <svg class="sub-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="M2 9h20M6 15h4"/></svg>
+            <div>
+              <div class="sub-title-row">
+                <h3 class="today-sub-title">订阅费与 API 等值估算对比</h3>
+                <span class="sub-scope-tag" id="today-sub-scope-badge">仅核算 OpenAI (Codex / ChatGPT)</span>
+              </div>
+              <p class="today-sub-desc">按请求日志的 API 等值与订阅费用对比；生图文件数参考金额不参与计算，图像工具真实费用未记录。自定预算不代表官方五小时额度。</p>
+              <p class="today-sub-desc" id="today-codex-quota" hidden></p>
+            </div>
+          </div>
+          <div class="today-sub-controls">
+            <div class="sub-plan-select-wrap">
+              <label for="today-sub-plan-select" class="sub-control-label">当前方案:</label>
+              <select id="today-sub-plan-select" class="sub-plan-select" onchange="onSubscriptionPlanChange(this.value)">
+                <option value="chatgpt_plus">ChatGPT Plus ($20/月 · 仅核算 OpenAI / Codex)</option>
+                <option value="chatgpt_pro">ChatGPT Pro ($200/月 · 仅核算 OpenAI / Codex)</option>
+                <option value="chatgpt_team">ChatGPT Team ($25/月 · 仅核算 OpenAI / Codex)</option>
+                <option value="claude_pro">Claude Pro ($20/月 · 仅核算 Anthropic / Claude)</option>
+                <option value="claude_team">Claude Team ($30/月 · 仅核算 Anthropic / Claude)</option>
+                <option value="custom">自定义订阅方案...</option>
+              </select>
+            </div>
+            <button class="btn-sub-config" id="btn-sub-config" onclick="toggleCustomSubModal(true)" title="自定义订阅参数">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              配置
+            </button>
+          </div>
+        </div>
+
+        <div class="today-roi-grid">
+          <!-- Card 1: Today ROI -->
+          <div class="today-roi-card" id="today-card-roi">
+            <div class="roi-card-header">
+              <span class="roi-card-title">今日方案 API 等值 / 订阅日均费用</span>
+              <span class="roi-badge" id="today-roi-badge">计算中...</span>
+            </div>
+            <div class="roi-value font-mono" id="today-stat-roi">—</div>
+            <div class="roi-sub" id="today-stat-roi-sub">—</div>
+          </div>
+
+          <!-- Card 2: Daily Quota Utilization -->
+          <div class="today-roi-card" id="today-card-quota">
+            <div class="roi-card-header">
+              <span class="roi-card-title">自定日预算进度</span>
+              <span class="roi-badge" id="today-quota-badge">—</span>
+            </div>
+            <div class="roi-value font-mono" id="today-stat-quota-pct">—</div>
+            <div class="today-quota-bar-container">
+              <div class="today-quota-bar-fill" id="today-quota-bar-fill" style="width: 0%;"></div>
+            </div>
+            <div class="roi-sub" id="today-stat-quota-sub">自定预算仅供安排使用，不代表官方额度</div>
+          </div>
+
+          <!-- Card 3: Month Breakeven Multiple -->
+          <div class="today-roi-card" id="today-card-month-roi">
+            <div class="roi-card-header">
+              <span class="roi-card-title">当月 API 等值 / 订阅月费</span>
+              <span class="roi-badge" id="today-month-roi-badge">本月</span>
+            </div>
+            <div class="roi-value font-mono text-emerald" id="today-stat-month-roi">—</div>
+            <div class="roi-sub" id="today-stat-month-roi-sub">—</div>
+          </div>
+        </div>
+
+        <!-- Custom Subscription Config Modal -->
+        <div class="sub-config-modal-backdrop" id="sub-config-modal" role="dialog" aria-modal="true" aria-labelledby="subscription-dialog-title" tabindex="-1" style="display: none;" onclick="if(event.target===this) toggleCustomSubModal(false)">
+          <div class="sub-config-modal-card">
+            <div class="modal-card-header">
+              <h4 id="subscription-dialog-title">自定义订阅参数</h4>
+              <button class="modal-close-btn" aria-label="关闭订阅设置" onclick="toggleCustomSubModal(false)">&times;</button>
+            </div>
+            <div class="modal-card-body">
+              <div class="form-group">
+                <label for="sub-custom-name">套餐显示名称</label>
+                <input type="text" id="sub-custom-name" class="form-control" data-initial-focus placeholder="例如: 我的专属订阅" value="自定义订阅">
+              </div>
+              <div class="form-group">
+                <label for="sub-custom-vendor">核算智能体 / 模型范围</label>
+                <select id="sub-custom-vendor" class="form-control">
+                  <option value="OpenAI">仅 OpenAI / Codex (ChatGPT 模型)</option>
+                  <option value="Anthropic">仅 Anthropic / Claude Code</option>
+                  <option value="Google">仅 Google / Antigravity (Gemini)</option>
+                  <option value="Zhipu">仅 智谱 AI / ZCode (GLM)</option>
+                  <option value="DeepSeek">仅 DeepSeek / OpenClaw</option>
+                  <option value="xAI">仅 xAI / Grok</option>
+                  <option value="Qwen">仅 通义千问 / Qwen Code</option>
+                  <option value="all">全生态全部模型 (不限厂商)</option>
+                </select>
+                <small class="form-hint">选择该订阅覆盖的厂商范围，仅将对应模型的消耗计入回本率</small>
+              </div>
+              <div class="form-group">
+                <label for="sub-custom-fee">月度订阅费用 (USD $)</label>
+                <input type="number" id="sub-custom-fee" class="form-control" placeholder="例如: 20" min="0.1" step="0.5" value="20">
+                <small class="form-hint">用于按 30 天分摊计算日均成本（例如 $20/月 = $0.67/天）</small>
+              </div>
+              <div class="form-group">
+                <label for="sub-custom-allowance">自定每周 API 等值预算 (USD $)</label>
+                <input type="number" id="sub-custom-allowance" class="form-control" placeholder="例如: 130" min="1" step="1" value="130">
+                <small class="form-hint">自行设置使用预算，除以 7 得到日预算；默认 $130 不代表 Plus 官方额度。</small>
+              </div>
+            </div>
+            <div class="modal-card-footer">
+              <button class="btn-secondary btn-sm" onclick="toggleCustomSubModal(false)">取消</button>
+              <button class="btn-primary btn-sm" onclick="saveCustomSubscription()">保存并应用</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- VIEW 1: Timeline View Container -->
-    <div id="view-timeline" class="view-content active">
-      <!-- Agent Filter Tabs & Quick Studio Link -->
+    <div id="view-timeline" role="tabpanel" aria-labelledby="btn-view-timeline" tabindex="0" class="view-content active">
+      <div class="timeline-page-header">
+        <div><h2 class="page-title">用量趋势</h2><p class="page-description">从每日趋势到来源构成，查看所选范围的实际记录</p></div>
+        <div class="timeline-date-controls">
+        <!-- Date Range Filter -->
+        <div class="toolbar-section">
+          <span class="toolbar-label">日期范围</span>
+          <div class="btn-group">
+            <button class="btn-chip" id="btn-date-today" onclick="setDatePreset('today')" title="查看今天的用量">
+              今日
+            </button>
+            <button class="btn-chip" id="btn-date-milestone" onclick="setDatePreset('milestone')" title="2026-05-22 首次使用 OpenClaw 接入 DeepSeek API (后接入 CC-Switch / Reasonix)">
+              历史起点
+            </button>
+            <button class="btn-chip" id="btn-date-all" onclick="setDatePreset('all')">
+              全部
+            </button>
+            <button class="btn-chip active" id="btn-date-30d" onclick="setDatePreset('30d')">
+              近 30 天
+            </button>
+            <button class="btn-chip" id="btn-date-7d" onclick="setDatePreset('7d')">
+              近 7 天
+            </button>
+          </div>
+
+          <details class="date-range-popover" id="date-range-popover">
+            <summary class="btn-chip" aria-label="自定日期范围">自定日期</summary>
+            <div class="date-range-panel">
+          <div class="date-picker-inputs">
+            <input type="date" id="input-start-date" aria-label="开始日期" aria-describedby="date-range-error" onchange="applyCustomDateRange()">
+            <span class="date-sep">至</span>
+            <input type="date" id="input-end-date" aria-label="结束日期" aria-describedby="date-range-error" onchange="applyCustomDateRange()">
+            <button class="btn-chip-action" onclick="applyCustomDateRange()">应用范围</button>
+          </div>
+          <p id="date-range-error" class="control-error" role="alert" hidden></p>
+            </div>
+          </details>
+        </div>
+        </div>
+      </div>
+
+      <div class="scope-summary" id="timeline-scope-summary" aria-live="polite"></div>
+
+      <!-- Sources in the selected range -->
       <div class="agent-tabs-container">
         <div class="agent-tabs">
           <button class="agent-tab active" data-agent="all" onclick="setAgentFilter('all')">
@@ -245,14 +531,16 @@
           <button class="agent-tab" data-agent="openclaw" onclick="setAgentFilter('openclaw')">
             <span class="tab-dot dot-openclaw"></span> OpenClaw (DeepSeek/多元)
           </button>
+          <button class="agent-tab" data-agent="qwen" onclick="setAgentFilter('qwen')">
+            <span class="tab-dot dot-qwen"></span> Qwen Code (通义千问)
+          </button>
+          <button class="agent-tab" data-agent="qoderwork" onclick="setAgentFilter('qoderwork')">
+            <span class="tab-dot dot-qoderwork"></span> QoderWork (估算)
+          </button>
+          <button class="agent-tab" data-agent="api" onclick="setAgentFilter('api')">
+            <span class="tab-dot dot-api"></span> 业务 API
+          </button>
         </div>
-
-        <button class="btn-image-studio-chip" onclick="switchViewMode('gallery')" title="点击查看 699 张本地生图原图与 Prompt">
-          <span class="chip-icon">🎨</span>
-          <span class="chip-text">GPT-Image-2 生图资产</span>
-          <span class="chip-count font-mono" id="chip-images-count">699 张</span>
-          <span class="chip-arrow">→</span>
-        </button>
       </div>
 
       <!-- Overview Metric Cards (Row 1 - 4 Symmetric Balanced Cards) -->
@@ -260,41 +548,45 @@
         <!-- Card 1: Total USD -->
         <div class="metric-card card-glow-blue">
           <div class="card-header">
-            <span class="card-title">筛选区间累计花费 (USD)</span>
-            <span class="card-tag tag-blue">美刀计量</span>
+            <span class="card-title">模型 API 等值</span>
+            <span class="card-tag tag-blue">USD</span>
           </div>
-          <div class="card-value font-mono" id="stat-total-cost">--</div>
+          <div class="card-value font-mono" id="stat-total-cost">—</div>
+          <div class="metric-sparkline" id="stat-cost-sparkline" aria-hidden="true"></div>
           <div class="card-sub" id="stat-cost-breakdown">加载中...</div>
         </div>
 
         <!-- Card 2: Total Tokens -->
         <div class="metric-card card-glow-emerald">
           <div class="card-header">
-            <span class="card-title">筛选区间 Token 消耗</span>
-            <span class="card-tag tag-emerald">统一 Token 刻度</span>
+            <span class="card-title">Token 消耗</span>
+            <span class="card-tag tag-emerald">含缓存</span>
           </div>
-          <div class="card-value font-mono" id="stat-total-tokens">--</div>
-          <div class="card-sub" id="stat-tokens-sub">含 ZCode 3.09亿 + Gemini 2.01亿</div>
+          <div class="card-value font-mono" id="stat-total-tokens">—</div>
+          <div class="metric-sparkline" id="stat-tokens-sparkline" aria-hidden="true"></div>
+          <div class="card-sub" id="stat-tokens-sub">含输入、输出与缓存读取</div>
         </div>
 
         <!-- Card 3: Cache Read -->
         <div class="metric-card card-glow-purple">
           <div class="card-header">
-            <span class="card-title">上下文缓存读取 (Cache Read)</span>
-            <span class="card-tag tag-purple">缓存命中率</span>
+            <span class="card-title">缓存读取</span>
+            <span class="card-tag tag-purple" title="缓存读取 Token / 总模型 Token">读取占比</span>
           </div>
-          <div class="card-value font-mono" id="stat-cache-tokens">--</div>
-          <div class="card-sub" id="stat-cache-rate">缓存率: --% (大幅节约费用)</div>
+          <div class="card-value font-mono" id="stat-cache-tokens">—</div>
+          <div class="metric-sparkline" id="stat-cache-sparkline" aria-hidden="true"></div>
+          <div class="card-sub" id="stat-cache-rate">缓存读取占比 —</div>
         </div>
 
-        <!-- Card 4: Google Gemini Usage -->
+        <!-- Card 4: Active days in the selected range -->
         <div class="metric-card card-glow-cyan">
           <div class="card-header">
-            <span class="card-title">Google (Gemini) 累计消耗</span>
-            <span class="card-tag tag-cyan">Antigravity 引擎</span>
+            <span class="card-title">活跃天数</span>
+            <span class="card-tag tag-cyan">所选区间</span>
           </div>
-          <div class="card-value font-mono" id="stat-gemini-usage">--</div>
-          <div class="card-sub" id="stat-gemini-sub">21天历史会话实录 (Gemini 3.7 Flash)</div>
+          <div class="card-value font-mono" id="stat-gemini-usage">—</div>
+          <div class="metric-sparkline" id="stat-days-sparkline" aria-hidden="true"></div>
+          <div class="card-sub" id="stat-gemini-sub">有使用记录的日期</div>
         </div>
       </div>
 
@@ -302,71 +594,48 @@
     <div class="chart-card">
       <div class="chart-header">
         <div>
-          <h2 class="chart-title" id="chart-main-title">AI 厂商聚合历史走势 (AI Provider Timeline)</h2>
-          <p class="chart-desc" id="chart-main-desc">支持按厂商全景或核心模型细分，包含 Claude (Anthropic)、Grok (xAI)、Google Gemini、OpenAI、智谱 GLM、DeepSeek</p>
+          <h2 class="chart-title" id="chart-main-title">每日消耗走势</h2>
+          <p class="chart-desc" id="chart-main-desc">按厂商聚合；点击图例显示或隐藏曲线</p>
         </div>
 
         <!-- Dimension and Axis Mode Toggles -->
         <div class="chart-controls">
           <div class="axis-switch" title="切换折线图的聚合维度：按厂商大类聚合或按各核心大模型细分">
-            <span class="axis-label">图表维度:</span>
+            <span class="axis-label">维度</span>
             <button id="dim-company" class="btn-axis active" onclick="setChartDimension('company')">
-              🏢 按厂商大类
+              按来源
             </button>
             <button id="dim-model" class="btn-axis" onclick="setChartDimension('model')">
-              🧬 按核心模型
+              按模型
             </button>
           </div>
 
           <div class="axis-switch">
-            <span class="axis-label">坐标单位:</span>
+            <span class="axis-label">单位</span>
             <button id="axis-cost" class="btn-axis active" onclick="setAxisMode('cost')">
-              💵 按金额 ($)
+              金额
             </button>
             <button id="axis-tokens" class="btn-axis" onclick="setAxisMode('tokens')">
-              🔢 按 Token 数
+              Token
             </button>
           </div>
         </div>
       </div>
 
-      <!-- Date Range Controls & Zoom/Y-Scale Controls Toolbar (User Requirement 1 & 2) -->
-      <div class="chart-toolbar">
-        <!-- Date Range Filter -->
-        <div class="toolbar-section">
-          <span class="toolbar-label">📅 日期范围:</span>
-          <div class="btn-group">
-            <button class="btn-chip" id="btn-date-today" onclick="setDatePreset('today')" title="直达今日 (2026-09-03) 实时监控数据">
-              ⚡ 今日 (Today)
-            </button>
-            <button class="btn-chip active" id="btn-date-milestone" onclick="setDatePreset('milestone')" title="2026-05-22 首次使用 OpenClaw 接入 DeepSeek API (后接入 CC-Switch / Reasonix)">
-              🚀 历史起点 (2026-05-22 DeepSeek)
-            </button>
-            <button class="btn-chip" id="btn-date-all" onclick="setDatePreset('all')">
-              🌐 全部
-            </button>
-            <button class="btn-chip" id="btn-date-30d" onclick="setDatePreset('30d')">
-              近 30 天
-            </button>
-            <button class="btn-chip" id="btn-date-7d" onclick="setDatePreset('7d')">
-              近 7 天
-            </button>
-          </div>
-
-          <div class="date-picker-inputs">
-            <input type="date" id="input-start-date" onchange="applyCustomDateRange()">
-            <span class="date-sep">至</span>
-            <input type="date" id="input-end-date" onchange="applyCustomDateRange()">
-            <button class="btn-chip-action" onclick="applyCustomDateRange()">应用范围</button>
-          </div>
-        </div>
-
+      <p class="chart-context" id="chart-context"></p>
+      <div class="chart-range-warning" id="chart-range-warning" role="status" hidden></div>
+      <details class="chart-settings">
+        <summary>图表设置 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 7h16M4 17h16M9 4v6M15 14v6"/></svg></summary>
+        <div class="chart-settings-panel">
+          <label class="chart-series-control" for="chart-series-limit">模型曲线数量
+            <select id="chart-series-limit" onchange="setChartSeriesLimit(this.value)"><option value="8">前 8 个</option><option value="16">前 16 个</option><option value="all">全部活跃模型</option></select>
+          </label>
         <!-- Y-Axis Scale & Zoom Controls -->
         <div class="toolbar-section">
-          <span class="toolbar-label">🔍 纵坐标调节与缩放:</span>
+          <span class="toolbar-label">纵轴范围</span>
           <div class="btn-group">
             <button class="btn-chip active" id="btn-scale-auto" onclick="setYScalePreset('auto')">
-              自适应 (Auto)
+              自适应
             </button>
             <button class="btn-chip" id="btn-scale-micro" onclick="setYScalePreset('micro')" title="将上限固定为 $20 或 50M，清晰看清小额日期的微观波动">
               聚焦小额
@@ -375,22 +644,25 @@
               中度视窗
             </button>
             <button class="btn-chip" id="btn-scale-log" onclick="toggleLogScale()" title="开启对数刻度，同时清晰展现低至 $0.05 与高达 $200 的曲线">
-              📈 对数刻度 (Log)
+              对数刻度
             </button>
           </div>
 
           <div class="custom-scale-input">
             <span class="scale-input-label">自定义上限:</span>
-            <input type="number" id="input-custom-y" placeholder="数值..." style="width: 80px;" onkeydown="if(event.key==='Enter') applyCustomYMax()">
+            <input type="number" id="input-custom-y" placeholder="数值..." min="0.000001" step="any" aria-label="纵轴上限" aria-describedby="custom-y-error" style="width: 80px;" onkeydown="if(event.key==='Enter') applyCustomYMax()">
             <button class="btn-chip-action" onclick="applyCustomYMax()">生效</button>
             <button class="btn-chip-reset" onclick="resetZoomAndScale()" title="重置图表缩放与坐标轴">重置</button>
           </div>
+          <p id="custom-y-error" class="control-error" role="alert" hidden></p>
         </div>
-      </div>
+        </div>
+      </details>
 
       <!-- Chart Canvas Wrapper -->
       <div class="chart-wrapper">
         <canvas id="mainChart"></canvas>
+        <div id="chart-empty-state" class="chart-empty-state" role="status" hidden></div>
       </div>
 
       <!-- Dynamic Custom Legend -->
@@ -404,19 +676,20 @@
       <!-- Left: Company Distribution -->
       <div class="panel-card">
         <div class="panel-header">
-          <h3 class="panel-title">AI 厂商综合消耗矩阵 (Company Matrix)</h3>
-          <span class="panel-badge" id="company-count">6 大主流厂商</span>
+          <h3 class="panel-title">来源构成</h3>
+          <span class="panel-badge" id="company-count">—</span>
         </div>
-        <div class="company-grid" id="company-grid">
+        <div class="source-list" id="company-grid">
           <!-- Dynamically populated -->
         </div>
+        <details class="inactive-sources" id="inactive-sources" hidden><summary id="inactive-sources-label"></summary><div class="inactive-source-list" id="inactive-source-list"></div></details>
       </div>
 
       <!-- Right: Model Ranking -->
       <div class="panel-card">
         <div class="panel-header">
-          <h3 class="panel-title">核心模型消耗总榜 (按公司大类合并 · 可点击展开明细)</h3>
-          <span class="panel-badge" id="models-count">4 大主要模型族</span>
+          <h3 class="panel-title">模型排名</h3>
+          <span class="panel-badge" id="models-count">—</span>
         </div>
         <div class="model-list" id="model-rank-list">
           <!-- Dynamically populated with collapsible items -->
@@ -428,15 +701,17 @@
     <div class="table-card">
       <div class="table-header">
         <div>
-          <h3 class="table-title">全景每日消耗与厂商明细表</h3>
-          <p class="table-sub">包含 OpenAI、智谱 GLM、Google Gemini、DeepSeek 每天的具体 Token 与美刀账单（支持搜索过滤）</p>
+          <h3 class="table-title">每日明细</h3>
+          <p class="table-sub">按日查看 Token、缓存读取与 API 等值估算</p>
         </div>
         <div class="table-search">
-          <input type="text" id="table-search-input" placeholder="按日期、厂商或模型过滤..." oninput="filterTable()">
+          <label class="table-sort-label" for="table-sort">排序</label>
+          <select id="table-sort" onchange="sortTable(this.value)"><option value="date">日期最新</option><option value="cost">金额最高</option><option value="tokens">Token 最多</option></select>
+          <input type="text" id="table-search-input" aria-label="搜索每日明细" placeholder="按日期、厂商或模型过滤..." oninput="filterTable()">
         </div>
       </div>
 
-      <div class="table-responsive">
+      <div class="table-responsive" tabindex="0" aria-label="每日用量明细，可横向滚动">
         <table class="data-table">
           <thead>
             <tr>
@@ -445,7 +720,7 @@
               <th>活跃模型 (Models)</th>
               <th class="text-right">总 Token (Total)</th>
               <th class="text-right">缓存读取 (Cache)</th>
-              <th class="text-right">花费金额 (USD)</th>
+              <th class="text-right">API 等值估算 (USD)</th>
             </tr>
           </thead>
           <tbody id="table-body">
@@ -453,32 +728,34 @@
           </tbody>
         </table>
       </div>
+      <nav class="pagination" id="table-pagination" aria-label="明细分页"></nav>
     </div>
   </div> <!-- End of #view-timeline -->
 
   <!-- VIEW 2: Project Attribution View Container -->
-  <div id="view-projects" class="view-content" style="display:none">
+  <div id="view-projects" role="tabpanel" aria-labelledby="btn-view-projects" tabindex="0" class="view-content" style="display:none">
+    <div class="page-heading"><div><h2 class="page-title">工程归因</h2><p class="page-description">按完整工作目录归因，比较工程的累计使用情况</p></div><span class="page-context" id="projects-results-summary" aria-live="polite"></span></div>
     <!-- Projects Summary Metrics -->
     <div class="project-summary-bar">
       <div class="project-stat-item">
         <div class="project-stat-label">已识别工程仓库</div>
-        <div class="project-stat-val font-mono" id="proj-stat-count">--</div>
-        <div class="project-stat-hint">深度索引本地多工作区</div>
+        <div class="project-stat-val font-mono" id="proj-stat-count">—</div>
+        <div class="project-stat-hint">当前筛选匹配的本地工程</div>
       </div>
       <div class="project-stat-item">
-        <div class="project-stat-label">工程累计总消耗金额</div>
-        <div class="project-stat-val font-mono text-emerald" id="proj-stat-cost">--</div>
-        <div class="project-stat-hint">四代 Agent 多模型综合折算</div>
+        <div class="project-stat-label">工程累计 API 等值估算</div>
+        <div class="project-stat-val font-mono text-emerald" id="proj-stat-cost">—</div>
+        <div class="project-stat-hint">当前筛选工程的累计金额</div>
       </div>
       <div class="project-stat-item">
         <div class="project-stat-label">工程累计 Token 消耗</div>
-        <div class="project-stat-val font-mono text-blue" id="proj-stat-tokens">--</div>
+        <div class="project-stat-val font-mono text-blue" id="proj-stat-tokens">—</div>
         <div class="project-stat-hint">含上下文缓存读取</div>
       </div>
-      <div class="project-stat-item">
-        <div class="project-stat-label">重点聚焦项目</div>
-        <div class="project-stat-val" id="proj-stat-focus">《小说项目》《自动回复》</div>
-        <div class="project-stat-hint">点击卡片可展开历史会话明细</div>
+      <div class="project-stat-item project-stat-focus">
+        <div class="project-stat-label">主要消耗工程</div>
+        <div class="project-stat-val" id="proj-stat-focus">—</div>
+        <div class="project-stat-hint" id="proj-focus-hint">按当前筛选中的累计金额</div>
       </div>
     </div>
 
@@ -488,10 +765,11 @@
         <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
         </svg>
-        <input type="text" id="project-search-input" placeholder="搜索项目名称或物理路径 (如: 小说、闲鱼、F:\novel_program、vibecoding)..." oninput="filterProjects()">
+        <input type="text" id="project-search-input" aria-label="搜索工程" placeholder="搜索工程名称、描述或路径…" oninput="filterProjects()">
       </div>
 
       <div class="project-filter-controls">
+        <button class="btn-chip project-today-filter" id="project-today-only" aria-pressed="false" onclick="toggleProjectTodayOnly()">仅今日活跃</button>
         <div class="chip-group">
           <span class="chip-label">Agent 归属:</span>
           <button class="btn-chip active" id="proj-agent-all" onclick="setProjectAgentFilter('all')">全部</button>
@@ -499,13 +777,16 @@
           <button class="btn-chip" id="proj-agent-zcode" onclick="setProjectAgentFilter('zcode')">ZCode</button>
           <button class="btn-chip" id="proj-agent-claude" onclick="setProjectAgentFilter('claude')">Claude</button>
           <button class="btn-chip" id="proj-agent-openclaw" onclick="setProjectAgentFilter('openclaw')">OpenClaw</button>
+          <button class="btn-chip" id="proj-agent-qwen" onclick="setProjectAgentFilter('qwen')">Qwen</button>
+          <button class="btn-chip" id="proj-agent-qoderwork" onclick="setProjectAgentFilter('qoderwork')">QoderWork</button>
+          <button class="btn-chip" id="proj-agent-api" onclick="setProjectAgentFilter('api')">业务 API</button>
         </div>
 
         <div class="chip-group">
           <span class="chip-label">排序方式:</span>
-          <button class="btn-chip active" id="proj-sort-cost" onclick="setProjectSort('cost')">💰 花费最高</button>
-          <button class="btn-chip" id="proj-sort-tokens" onclick="setProjectSort('tokens')">⚡ Token 最多</button>
-          <button class="btn-chip" id="proj-sort-active" onclick="setProjectSort('active')">🕒 最近活跃</button>
+          <button class="btn-chip active" id="proj-sort-cost" onclick="setProjectSort('cost')">花费最高</button>
+          <button class="btn-chip" id="proj-sort-tokens" onclick="setProjectSort('tokens')">Token 最多</button>
+          <button class="btn-chip" id="proj-sort-active" onclick="setProjectSort('active')">最近活跃</button>
         </div>
       </div>
     </div>
@@ -514,31 +795,33 @@
     <div class="projects-grid" id="projects-grid">
       <!-- Dynamically Populated -->
     </div>
+    <nav class="pagination" id="projects-pagination" aria-label="项目分页"></nav>
   </div>
 
   <!-- VIEW 3: Image Studio & Gallery Container -->
-  <div id="view-gallery" class="view-content" style="display: none;">
+  <div id="view-gallery" role="tabpanel" aria-labelledby="btn-view-gallery" tabindex="0" class="view-content" style="display: none;">
+    <div class="page-heading"><div><h2 class="page-title">图像资产</h2><p class="page-description">保留完整作品预览，浏览本地生成图像与 Prompt</p></div><span class="page-context" id="gallery-results-summary" aria-live="polite"></span></div>
     <!-- Hero Summary Metrics Bar (4 Balanced Studio Cards) -->
     <div class="gallery-hero-bar">
       <div class="gallery-stat-item">
-        <div class="gallery-stat-label">🎨 累计生成图像资产</div>
-        <div class="gallery-stat-val font-mono" id="gal-stat-total">699 张原图</div>
-        <div class="gallery-stat-hint">D盘早期 538 张 + C盘近期 161 张</div>
+        <div class="gallery-stat-label">累计生成图像资产</div>
+        <div class="gallery-stat-val font-mono" id="gal-stat-total">—</div>
+        <div class="gallery-stat-hint">本机图像目录汇总</div>
       </div>
       <div class="gallery-stat-item">
-        <div class="gallery-stat-label">💰 等效折算金额</div>
-        <div class="gallery-stat-val font-mono text-emerald" id="gal-stat-cost">$27.96 USD</div>
-        <div class="gallery-stat-hint">按 OpenAI GPT-Image / DALL-E 标准单价</div>
+        <div class="gallery-stat-label">图像文件参考金额</div>
+        <div class="gallery-stat-val font-mono text-emerald" id="gal-stat-cost">—</div>
+        <div class="gallery-stat-hint" id="gallery-cost-hint">按文件数估算，不计入合计；真实费用未记录</div>
       </div>
       <div class="gallery-stat-item">
-        <div class="gallery-stat-label">⚡ 等效额度消耗</div>
-        <div class="gallery-stat-val font-mono text-blue" id="gal-stat-tokens">14.0M Tokens</div>
-        <div class="gallery-stat-hint">官方 3~5 倍轮次速率折算额度池</div>
+        <div class="gallery-stat-label">参考 Token 等值</div>
+        <div class="gallery-stat-val font-mono text-blue" id="gal-stat-tokens">—</div>
+        <div class="gallery-stat-hint">按张数折算，不是官方额度</div>
       </div>
       <div class="gallery-stat-item">
-        <div class="gallery-stat-label">🔥 今日生图活跃</div>
-        <div class="gallery-stat-val font-mono text-rose" id="gal-stat-today">42 张原图</div>
-        <div class="gallery-stat-hint">单日历史峰值: 197 张 (2026-06-06)</div>
+        <div class="gallery-stat-label">今日生图活跃</div>
+        <div class="gallery-stat-val font-mono text-rose" id="gal-stat-today">—</div>
+        <div class="gallery-stat-hint">按日志日期统计</div>
       </div>
     </div>
 
@@ -546,7 +829,7 @@
     <div class="gallery-toolbar">
       <div class="gallery-search-box">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-        <input type="text" id="gallery-search-input" placeholder="搜索生图 Prompt 关键词、日期或文件名..." oninput="filterGalleryView()">
+        <input type="text" id="gallery-search-input" aria-label="搜索图像 Prompt、日期或文件名" placeholder="搜索生图 Prompt 关键词、日期或文件名..." oninput="filterGalleryView()">
       </div>
 
       <div class="gallery-filter-controls">
@@ -556,46 +839,49 @@
       </div>
     </div>
 
+    <div class="gallery-display-controls" aria-label="缩略图展示方式"><span>缩略图</span><button class="btn-chip active" id="gallery-fit-contain" aria-pressed="true" onclick="setGalleryFit('contain')">完整预览</button><button class="btn-chip" id="gallery-fit-cover" aria-pressed="false" onclick="setGalleryFit('cover')">铺满预览</button></div>
     <!-- Studio Images Grid -->
+    <div id="gallery-catalog-status" class="gallery-catalog-status" role="status" aria-live="polite" hidden></div>
     <div class="studio-grid" id="studio-grid">
       <!-- Dynamically populated with cards -->
     </div>
+    <nav class="pagination" id="gallery-pagination" aria-label="画廊分页"></nav>
   </div>
 
   <!-- Footer -->
   <footer class="footer">
-    <p>Agentic Usage Hub · 历史起点：<strong>2026-05-22</strong>（OpenClaw 首次接入 DeepSeek API，后历经 CC-Switch & Reasonix）</p>
-    <p class="footer-sub">纯本地私密分析 · 数据直读 <code>~/.claude</code>、<code>~/.codex</code>、<code>~/.zcode</code>、<code>~/.reasonix</code>、<code>~/.openclaw</code> 与 <code>~/.gemini/antigravity</code></p>
+    <p>Agentic Usage Hub · 基于本机可见日志</p>
+    <p class="footer-sub">统计范围由各视图筛选决定 · API 等值估算不代表订阅账单</p>
   </footer>
 </div>
 
   <!-- Modal: Codex Generated Images Gallery -->
-  <div id="image-gallery-modal" class="modal-backdrop" style="display: none;" onclick="closeImageGallery(event)">
+  <div id="image-gallery-modal" role="dialog" aria-modal="true" aria-labelledby="gallery-dialog-title" tabindex="-1" class="modal-backdrop" style="display: none;" onclick="closeImageGallery(event)">
     <div class="modal-content" onclick="event.stopPropagation()">
       <div class="modal-header">
         <div>
-          <h2 class="modal-title">🎨 Codex 本地生图画廊 (GPT-Image-2)</h2>
+          <h2 class="modal-title" id="gallery-dialog-title">Codex 本地生图画廊 (GPT-Image-2)</h2>
           <p class="modal-sub">全量归集自本地生图存储目录（纯本地安全只读）</p>
         </div>
-        <button class="modal-close-btn" onclick="closeImageGallery()">&times;</button>
+        <button class="modal-close-btn" aria-label="关闭图像画廊" onclick="closeImageGallery()">&times;</button>
       </div>
 
       <div class="gallery-summary-bar">
         <div class="gallery-summary-item">
           <span class="label">累计生成图像</span>
-          <span class="val font-mono" id="gal-total-count">699 张</span>
+          <span class="val font-mono" id="gal-total-count">—</span>
         </div>
         <div class="gallery-summary-item">
-          <span class="label">等效折算美刀</span>
-          <span class="val font-mono text-emerald" id="gal-total-cost">$27.96</span>
+          <span class="label">文件参考金额（不计入合计）</span>
+          <span class="val font-mono text-emerald" id="gal-total-cost">—</span>
         </div>
         <div class="gallery-summary-item">
-          <span class="label">等效额度 Token</span>
-          <span class="val font-mono text-blue" id="gal-total-tokens">14.0M</span>
+          <span class="label">参考 Token 等值（非官方额度）</span>
+          <span class="val font-mono text-blue" id="gal-total-tokens">—</span>
         </div>
         <div class="gallery-summary-item">
           <span class="label">今日生图</span>
-          <span class="val font-mono text-rose" id="gal-today-count">42 张</span>
+          <span class="val font-mono text-rose" id="gal-today-count">—</span>
         </div>
       </div>
 
@@ -606,21 +892,21 @@
   </div>
 
   <!-- Model Pricing Matrix Modal -->
-  <div id="pricing-modal" class="pricing-modal-overlay" style="display: none;" onclick="if(event.target===this) togglePricingModal()">
+  <div id="pricing-modal" role="dialog" aria-modal="true" aria-labelledby="pricing-dialog-title" tabindex="-1" class="pricing-modal-overlay" style="display: none;" onclick="if(event.target===this) togglePricingModal()">
     <div class="pricing-modal-card">
       <div class="pricing-modal-header">
         <div class="pricing-modal-title">
-          <span class="pricing-modal-icon">💎</span>
+          <svg class="pricing-modal-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m12 3 9 5v8l-9 5-9-5V8zM3 8l9 5 9-5M12 13v8"/></svg>
           <div>
-            <h3>主流大模型官方计费矩阵 (USD / 1M Tokens)</h3>
-            <p>包含 Anthropic Claude、xAI Grok、OpenAI GPT、Google DeepMind Gemini、智谱 GLM、DeepSeek、Qwen 等实时口径</p>
+            <h3 id="pricing-dialog-title">主流大模型参考费率 (USD / 1M Tokens)</h3>
+            <p>包含 Anthropic Claude、xAI Grok、OpenAI GPT、Google DeepMind Gemini、智谱 GLM、DeepSeek、Qwen 等模型参考口径</p>
           </div>
         </div>
-        <button class="btn-close-modal" onclick="togglePricingModal()">✕</button>
+        <button class="btn-close-modal" aria-label="关闭模型参考费率" onclick="togglePricingModal()">✕</button>
       </div>
       <div class="pricing-modal-body">
         <div class="pricing-search-bar">
-          <input type="text" id="pricing-search-input" placeholder="输入模型名称或厂商搜索（例如 claude, grok, glm, 3.7, qwen）..." oninput="filterPricingTable()">
+          <input type="text" id="pricing-search-input" aria-label="搜索模型参考费率" data-initial-focus placeholder="输入模型名称或厂商搜索（例如 claude, grok, glm, 3.7, qwen）..." oninput="filterPricingTable()">
         </div>
         <div class="pricing-table-wrap">
           <table class="pricing-table">
@@ -643,6 +929,35 @@
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <div id="image-lightbox" class="image-lightbox overlay" role="dialog" aria-modal="true" aria-labelledby="lightbox-title" tabindex="-1" style="display: none;">
+    <div class="lightbox-dialog">
+      <div class="lightbox-toolbar">
+        <h2 id="lightbox-title">图像预览</h2>
+        <span id="lightbox-counter" class="font-mono"></span>
+        <div class="lightbox-actions">
+          <button type="button" class="btn-secondary" id="lightbox-zoom-out" aria-label="缩小图像">−</button>
+          <button type="button" class="btn-secondary font-mono" id="lightbox-zoom-reset" aria-label="恢复适应窗口">100%</button>
+          <button type="button" class="btn-secondary" id="lightbox-zoom-in" aria-label="放大图像">+</button>
+          <a class="btn-secondary" id="lightbox-original" target="_blank" rel="noopener">打开原图 ↗</a>
+          <a class="btn-secondary" id="lightbox-download" download>下载</a>
+          <button type="button" class="modal-close-btn" id="lightbox-close" data-initial-focus aria-label="关闭图像预览">×</button>
+        </div>
+      </div>
+      <div class="lightbox-stage" id="lightbox-stage">
+        <button type="button" class="lightbox-nav prev" id="lightbox-prev" aria-label="上一张图像">‹</button>
+        <img class="lightbox-image" id="lightbox-image" alt="" draggable="false">
+        <div class="lightbox-error" id="lightbox-error" hidden><p>图像加载失败</p><button type="button" class="btn-secondary" id="lightbox-retry">重试</button></div>
+        <span id="lightbox-loading" class="lightbox-loading" role="status">正在加载图像…</span>
+        <button type="button" class="lightbox-nav next" id="lightbox-next" aria-label="下一张图像">›</button>
+      </div>
+      <div class="lightbox-details">
+        <div id="lightbox-meta" class="font-mono"></div>
+        <div class="lightbox-prompt-tools"><h3>Prompt</h3><div class="lightbox-prompt-actions"><button type="button" class="btn-secondary btn-sm" id="lightbox-prompt-expand" aria-expanded="false" aria-controls="lightbox-prompt">展开</button><button type="button" class="btn-secondary btn-sm" id="lightbox-prompt-copy">复制 Prompt</button></div></div><p id="lightbox-prompt"></p>
+        <p id="lightbox-action-status" class="lightbox-action-status" role="status"></p>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
 </body>
 </html>

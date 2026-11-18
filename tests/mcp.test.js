@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const mcp = require('../mcp/server.js');
 
-test('MCP Server: handleInitialize returns standard protocol capabilities', () => {
+test('MCP Server: handleInitialize returns standard protocol capabilities', async () => {
   const res = mcp.handleInitialize('init-1', {});
   assert.equal(res.jsonrpc, '2.0');
   assert.equal(res.id, 'init-1');
@@ -11,7 +11,7 @@ test('MCP Server: handleInitialize returns standard protocol capabilities', () =
   assert.equal(res.result.serverInfo.name, 'agentic-usage-hub');
 });
 
-test('MCP Server: handleToolsList returns all 3 telemetry tools', () => {
+test('MCP Server: handleToolsList returns all 3 telemetry tools', async () => {
   const res = mcp.handleToolsList('list-1');
   assert.equal(res.jsonrpc, '2.0');
   assert.equal(res.id, 'list-1');
@@ -22,8 +22,8 @@ test('MCP Server: handleToolsList returns all 3 telemetry tools', () => {
   assert.ok(toolNames.includes('get_project_breakdown'));
 });
 
-test('MCP Server: get_usage_today executes and returns structured JSON', () => {
-  const res = mcp.handleToolCall('call-1', {
+test('MCP Server: get_usage_today executes and returns structured JSON', async () => {
+  const res = await mcp.handleToolCall('call-1', {
     name: 'get_usage_today',
     arguments: { tier: 'standard' }
   });
@@ -37,8 +37,8 @@ test('MCP Server: get_usage_today executes and returns structured JSON', () => {
   assert.ok('activeModels' in parsed);
 });
 
-test('MCP Server: get_usage_range executes with grouping', () => {
-  const res = mcp.handleToolCall('call-2', {
+test('MCP Server: get_usage_range executes with grouping', async () => {
+  const res = await mcp.handleToolCall('call-2', {
     name: 'get_usage_range',
     arguments: { groupBy: 'company' }
   });
@@ -49,8 +49,8 @@ test('MCP Server: get_usage_range executes with grouping', () => {
   assert.ok(Array.isArray(parsed.breakdown));
 });
 
-test('MCP Server: get_project_breakdown executes with limit', () => {
-  const res = mcp.handleToolCall('call-3', {
+test('MCP Server: get_project_breakdown executes with limit', async () => {
+  const res = await mcp.handleToolCall('call-3', {
     name: 'get_project_breakdown',
     arguments: { limit: 5 }
   });
@@ -61,8 +61,8 @@ test('MCP Server: get_project_breakdown executes with limit', () => {
   assert.ok(parsed.returned <= 5);
 });
 
-test('MCP Server: returns 32601 on unknown tool call', () => {
-  const res = mcp.handleToolCall('call-err', {
+test('MCP Server: returns 32601 on unknown tool call', async () => {
+  const res = await mcp.handleToolCall('call-err', {
     name: 'unknown_tool',
     arguments: {}
   });

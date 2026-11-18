@@ -6,7 +6,7 @@
  */
 
 const { exec } = require('child_process');
-const path = require('path');
+require('../lib/config');
 const pkg = require('../package.json');
 
 const args = process.argv.slice(2);
@@ -34,7 +34,7 @@ Options:
   -h, --help          Show this help message
 
 Supported Agents:
-  OpenAI Codex, Anthropic Claude, xAI Grok, Google Gemini, 智谱 ZCode, DeepSeek OpenClaw
+  OpenAI Codex, Anthropic Claude, xAI Grok, Google Gemini, 智谱 ZCode, DeepSeek OpenClaw, 通义千问 Qwen Code, QoderWork CN (估算)
 
 Documentation:
   https://github.com/wangx1ao2/agentic-usage-hub
@@ -50,9 +50,10 @@ if (args.includes('-v') || args.includes('--version')) {
 // Parse port flag
 let customPort = null;
 const portIdx = args.findIndex(a => a === '-p' || a === '--port');
-if (portIdx !== -1 && args[portIdx + 1]) {
-  const parsed = parseInt(args[portIdx + 1], 10);
-  if (!isNaN(parsed) && parsed > 0 && parsed <= 65535) {
+if (portIdx !== -1) {
+  const raw = args[portIdx + 1] || '';
+  const parsed = /^\d+$/.test(raw) ? Number(raw) : NaN;
+  if (Number.isInteger(parsed) && parsed > 0 && parsed <= 65535) {
     customPort = parsed;
     process.env.PORT = String(customPort);
   } else {
@@ -62,7 +63,11 @@ if (portIdx !== -1 && args[portIdx + 1]) {
 }
 
 const shouldOpen = args.includes('-o') || args.includes('--open');
-const targetPort = customPort || process.env.PORT || 4242;
+const targetPort = customPort || Number(process.env.PORT || 4242);
+if (!Number.isInteger(targetPort) || targetPort < 1 || targetPort > 65535) {
+  console.error('Error: PORT must be an integer between 1 and 65535.');
+  process.exit(1);
+}
 
 // Require and start unified server
 const { startServer } = require('../unified-server.js');

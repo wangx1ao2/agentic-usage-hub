@@ -19,6 +19,9 @@ temp/
 # Coverage & test output
 coverage/
 .nyc_output/
+# Generated browser captures, videos and media runtimes; curated images live in docs/images.
+output/
+*.tgz
 
 # Logs
 *.log

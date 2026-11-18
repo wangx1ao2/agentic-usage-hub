@@ -2,22 +2,27 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { server } = require('../unified-server');
 
-const BASE_URL = 'http://localhost:4242';
+let BASE_URL;
 
 test('API Test Suite - Agentic Usage Hub', async (t) => {
-  let serverInstance = null;
-
-  // Ensure server is listening before tests
-  try {
-    await fetch(`${BASE_URL}/`);
-  } catch (e) {
-    await new Promise(resolve => {
-      serverInstance = server.listen(4242, resolve);
-    });
-  }
+  const serverInstance = server;
+  await new Promise(resolve => serverInstance.listen(0, '127.0.0.1', resolve));
+  BASE_URL = `http://127.0.0.1:${serverInstance.address().port}`;
 
   t.after(() => {
-    if (serverInstance) serverInstance.close();
+    serverInstance.close();
+  });
+
+  await t.test('GET /api/codex-live returns independent, uncached live usage', async () => {
+    const response = await fetch(`${BASE_URL}/api/codex-live`);
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('cache-control'), 'no-store');
+    const data = await response.json();
+    assert.equal(data.agent, 'codex');
+    assert.equal(data.windowSeconds, 60);
+    assert.ok(Array.isArray(data.sessions));
+    assert.ok(Number.isFinite(data.totals.tokensPerSecond));
+    assert.equal(data.basis, 'logged-request-usage');
   });
 
   await t.test('1. GET /api/dashboard returns complete valid schema', async () => {
@@ -59,6 +64,19 @@ test('API Test Suite - Agentic Usage Hub', async (t) => {
     ['OpenAI', 'Anthropic', 'xAI', 'Google (Gemini)', '智谱 AI (Z.ai)', 'DeepSeek'].forEach(c => {
       assert.ok(compNames.includes(c), `Company ${c} must be in companies list`);
     });
+
+    // Verify subscriptionDefaults and thisMonthCost for ROI analysis
+    assert.ok(data.meta.subscriptionDefaults, 'subscriptionDefaults should exist in meta');
+    assert.equal(typeof data.meta.subscriptionDefaults.defaultPlan, 'string');
+    assert.equal(typeof data.meta.subscriptionDefaults.monthlyFee, 'number');
+    assert.equal(typeof data.meta.subscriptionDefaults.weeklyAllowance, 'number');
+    assert.equal(typeof data.totals.thisMonthCost, 'number');
+    assert.equal(typeof data.todaySummary.thisMonthCost, 'number');
+    // File-count image references remain available but never enter log totals.
+    assert.equal(data.imageAnalysis.includedInTotals, false);
+    assert.equal(data.todaySummary.images.usageAvailable, false);
+    assert.ok(Math.abs(data.totals.totalCostUSD - data.timeline.reduce((sum, day) => sum + day.totalCost, 0)) < 0.006);
+    assert.equal(data.totals.totalTokens, data.timeline.reduce((sum, day) => sum + day.totalTokens, 0));
   });
 
   await t.test('2. GET /api/dashboard handles invalid tier and agent gracefully', async () => {
@@ -162,8 +180,8 @@ test('API Test Suite - Agentic Usage Hub', async (t) => {
     assert.ok(data.models['grok-4.6'], 'Grok 4.6 must be cataloged');
     assert.ok(data.models['claude-3-7-sonnet'], 'Claude 3.7 Sonnet must be cataloged');
     assert.ok(data.models['grok-3'], 'Grok 3 must be cataloged');
-    assert.equal(data.models['claude-fable-5'].standard.in, 5.00);
-    assert.equal(data.models['grok-4.6'].standard.in, 4.00);
+    assert.equal(data.models['claude-fable-5'].standard.in, 10.00);
+    assert.equal(data.models['grok-4.6'].standard.in, 2.00);
     assert.equal(data.models['claude-3-7-sonnet'].standard.in, 3.00);
     assert.equal(data.models['grok-3'].standard.in, 3.00);
   });
@@ -182,5 +200,58 @@ test('API Test Suite - Agentic Usage Hub', async (t) => {
     assert.equal(dataGrok.meta.agentFilter, 'grok');
     assert.ok(Array.isArray(dataGrok.timeline));
     assert.ok(dataGrok.timeline.length > 0, 'Grok timeline should span recent calendar days');
+  });
+
+  await t.test('12. GET /api/dashboard provides subscription defaults and Month-to-Date cost', async () => {
+    const res = await fetch(`${BASE_URL}/api/dashboard`);
+    assert.equal(res.status, 200);
+    const data = await res.json();
+    assert.ok(data.meta.subscriptionDefaults, 'meta.subscriptionDefaults must exist');
+    assert.equal(data.meta.subscriptionDefaults.defaultPlan, 'chatgpt_plus');
+    assert.equal(data.meta.subscriptionDefaults.monthlyFee, 20);
+    assert.equal(data.meta.subscriptionDefaults.weeklyAllowance, 130);
+    assert.ok(data.totals.thisMonthCost >= 0, 'thisMonthCost should be non-negative');
+    assert.ok(data.todaySummary.thisMonthCost >= 0, 'todaySummary.thisMonthCost should be non-negative');
+  });
+
+  await t.test('14. Image catalog returns the full index without expanding dashboard previews', async () => {
+    const response = await fetch(`${BASE_URL}/api/codex-images`);
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('cache-control'), 'no-store');
+    const catalog = await response.json();
+    const adapter = require('../codex-image-adapter');
+    const analysis = adapter.getCodexImageAnalysis();
+    assert.ok(Array.isArray(catalog.images));
+    assert.equal(catalog.totalCount, catalog.images.length);
+    assert.equal(catalog.totalCount, analysis.totals.totalCount);
+    assert.deepEqual(catalog.images.slice(0, 100), analysis.recentImages);
+    for (const image of catalog.images) {
+      assert.equal(typeof image.filePath, 'string');
+      assert.equal(typeof image.prompt, 'string');
+      assert.match(image.date, /^\d{4}-\d{2}-\d{2}$/);
+    }
+  });
+
+  await t.test('13. Daily Codex quota history stays consistent with its window breakdown', async () => {
+    const data = await (await fetch(`${BASE_URL}/api/dashboard`)).json();
+    const history = data.codexQuota;
+    assert.equal(history.schemaVersion, 2);
+    assert.ok(Array.isArray(history.daily));
+    assert.ok(Array.isArray(history.windows));
+    assert.deepEqual(history, data.todaySummary.codexQuota);
+    for (const day of history.daily) {
+      assert.match(day.date, /^\d{4}-\d{2}-\d{2}$/);
+      assert.ok(day.apiEquivalentUSD >= 0);
+      assert.ok(Math.abs(day.apiEquivalentUSD - day.quotaApiEquivalentUSD - day.unattributedApiEquivalentUSD) < 0.00001);
+      if (day.quotaObserved) {
+        assert.ok(Math.abs(day.usedPercent - day.windows.reduce((sum, row) => sum + row.usedPercent, 0)) < 0.0001);
+        assert.ok(Math.abs(day.quotaUnits - day.usedPercent / 100) < 0.00001);
+      } else {
+        assert.equal(day.usedPercent, null);
+      }
+      for (const window of day.windows) {
+        assert.ok(window.estimatedPer100USD === null || Number.isFinite(window.estimatedPer100USD));
+      }
+    }
   });
 });

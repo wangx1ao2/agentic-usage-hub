@@ -2,16 +2,17 @@
 
 > Local-first token usage and cost analytics dashboard for AI coding agents
 > (OpenAI Codex CLI, Claude Code, Google Antigravity/Gemini, xAI Grok, DeepSeek
-> OpenClaw/Reasonix, Zhipu ZCode). Reads agent session logs read-only and
-> aggregates tokens, prompt-cache hits and USD cost per model, per vendor and
-> per local project. 100% offline, zero telemetry.
+> OpenClaw/Reasonix, Zhipu ZCode, Tongyi Qwen Code, QoderWork CN). Reads agent session
+> logs read-only and aggregates tokens, prompt-cache hits and USD cost per model, per
+> vendor and per local project. QoderWork CN uses an estimated body-length token method
+> (the platform masks real counters behind credit billing). 100% offline, zero telemetry.
 
 ## Run
 
 - One command: `npx agentic-usage-hub` (Node.js >= 20), dashboard at http://localhost:4242
 - MCP Server: `npx agentic-usage-hub --mcp` (Stdio JSON-RPC for Claude Code, Cursor, Windsurf)
 - Flags: `--port/-p`, `--open/-o`, `--mcp`, `--version/-v`, `--help/-h`
-- Optional env config via `.env` (PORT, CODEX_IMAGE_DIRS, OPENCLAW_SESSIONS_DIR, REASONIX_USAGE_FILE)
+- Optional env config via `.env` (PORT, HOST, CODEX_IMAGE_DIRS, OPENCLAW_SESSIONS_DIR, REASONIX_USAGE_FILE, QWEN_SESSIONS_DIR, QWEN_USAGE_FILE, QODER_SESSIONS_DIR, QODER_EST_IN_CHARS_PER_TOKEN, QODER_EST_OUT_CHARS_PER_TOKEN, QWEN_USD_CNY_RATE)
 
 ## Docs
 
