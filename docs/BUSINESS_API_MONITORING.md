@@ -49,7 +49,7 @@ BUSINESS_API_PROJECTS=E:\boss
 
 `billingMode: "chatgpt-subscription"` 的请求也计入 Codex 额度页的当日金额、所在五小时窗口及每 100% 额度的 API 等值；独立付费 API 不计入此页。没有会话 `quotaReset` 的临时请求按已知账号窗口的起止时间归属；没有可对应窗口时保留在当日金额中，显示为未归属金额，不推算额度百分比。
 
-配置业务 API 项目后，服务后台每 30 秒通过 Codex App Server 的 `account/rateLimits/read` 读取一次账号真实额度，手动刷新会立即读取。此操作只查询账号，不启动对话、不调用模型。自动寻找 PATH 或项目 `.runtime/codex-cli` 中已安装的 CLI，也可用 `CODEX_QUOTA_BIN` 指定可执行文件。采集结果保存在缓存目录 `codex-quota/`，面板重启后继续合并；读取失败保留旧快照并在来源诊断中报告异常。设置 `CODEX_ACCOUNT_QUOTA_DISABLED=1` 可禁用联网额度读取。
+账号联网查询默认关闭，与业务 API 项目配置独立。设置 `CODEX_ACCOUNT_QUOTA_ENABLED=1` 后，服务后台每 30 秒通过 Codex App Server 的 `account/rateLimits/read` 读取一次账号真实额度，手动刷新会立即读取。此操作只查询账号，不启动对话、不调用模型。自动寻找 PATH 或项目 `.runtime/codex-cli` 中已安装的 CLI，也可用 `CODEX_QUOTA_BIN` 指定可执行文件。采集结果保存在缓存目录 `codex-quota/`，面板重启后继续合并；读取失败保留旧快照并在来源诊断中报告异常。设置 `CODEX_ACCOUNT_QUOTA_DISABLED=1` 可禁用联网额度读取。
 
 空闲期间的账号查询可能返回 `0%`，并将重置时间持续更新为查询时间加五小时。这是待启用额度的占位快照，不代表产生调用或启动了一个使用窗口。窗口以非零额度记录或带明确额度标记的实际请求为依据；零用量查询仅补充已有真实窗口的基线，不得创建空闲窗口、改变真实窗口起点或重复累计后续用量。历史数据在每次重算时执行同一规则，原始快照保留。
 

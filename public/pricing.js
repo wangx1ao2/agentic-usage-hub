@@ -49,9 +49,9 @@ function renderPricingTable(models, companies) {
           <strong style="color:var(--text-main)">${esc(mVal.label || mKey)}</strong>
           <div style="font-size:11px;color:var(--text-dim);font-family:monospace">${esc(mKey)}</div>
         </td>
-        <td class="font-mono text-emerald">$${Number(std.in || 0).toFixed(2)}</td>
-        <td class="font-mono text-blue">$${Number(std.out || 0).toFixed(2)}</td>
-        <td class="font-mono text-purple">$${Number(std.cache || 0).toFixed(3)}</td>
+        <td class="font-mono text-emerald">${mVal.unpriced ? '暂无费率' : '$' + Number(std.in || 0).toFixed(2)}</td>
+        <td class="font-mono text-blue">${mVal.unpriced ? '暂无费率' : '$' + Number(std.out || 0).toFixed(2)}</td>
+        <td class="font-mono text-purple">${mVal.unpriced ? '暂无费率' : '$' + Number(std.cache || 0).toFixed(3)}</td>
         <td>
           <span style="font-size:12px;color:var(--text-muted)">${esc(mVal.agent || 'cli')}</span>
         </td>

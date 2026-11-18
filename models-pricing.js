@@ -4,6 +4,8 @@
  * 计费标准口径：USD 美元 / 1M Tokens (包含 Prompt 缓存读取与阶梯定价)
  */
 
+require('./lib/config');
+
 const COMPANY_CONFIG = {
   'OpenAI': {
     label: 'OpenAI (Codex / GPT)',
@@ -527,13 +529,17 @@ const MODEL_CATALOG = {
   }
 };
 
-// User-selected estimation convention; the reviewer routing ID does not
-// establish which model or tariff OpenAI actually uses.
+// A routing ID is not evidence of a model or tariff. Public defaults remain
+// unpriced; a local, explicitly configured model supplies an optional estimate.
+const autoReviewRateModel = (process.env.CODEX_AUTO_REVIEW_RATE_MODEL || '').trim();
+const autoReviewRate = Object.hasOwn(MODEL_CATALOG, autoReviewRateModel) ? MODEL_CATALOG[autoReviewRateModel] : null;
 MODEL_CATALOG['codex-auto-review'] = {
-  label: 'codex-auto-review（按 GPT-6.1 Sol 估算）', company: 'OpenAI', agent: 'codex',
-  standard: MODEL_CATALOG['gpt-6.1-sol'].standard,
-  flagship: MODEL_CATALOG['gpt-6.1-sol'].flagship,
-  pricingAssumption: 'user-selected-gpt-6.1-sol'
+  label: autoReviewRate ? `codex-auto-review（按 ${autoReviewRate.label} 估算）` : 'codex-auto-review（未配置估算费率）',
+  company: 'OpenAI', agent: 'codex',
+  standard: autoReviewRate?.standard || { in: 0, out: 0, cache: 0 },
+  flagship: autoReviewRate?.flagship || autoReviewRate?.standard || { in: 0, out: 0, cache: 0 },
+  unpriced: !autoReviewRate, assumedRateModel: autoReviewRate ? autoReviewRateModel : null,
+  pricingAssumption: autoReviewRate ? `user-selected-${autoReviewRateModel}` : null
 };
 
 /**
@@ -560,17 +566,17 @@ function resolveModelInfo(rawModelName, defaultAgent = 'openclaw') {
   const unpriced = (company, agent) => ({ canonicalName: cleaned, label: cleaned, company, agent, pricing: { in: 0, out: 0, cache: 0 }, unpriced: true });
   const fromCatalog = (key) => {
     const item = MODEL_CATALOG[key];
-    return { canonicalName: key, label: item.label, company: item.company, agent: item.agent, pricing: item.standard };
+    return { canonicalName: key, label: item.label, company: item.company, agent: item.agent, pricing: item.standard,
+      ...(item.unpriced ? { unpriced: true } : {}),
+      ...(item.assumedRateModel ? { assumedRateModel: item.assumedRateModel, pricingAssumption: item.pricingAssumption } : {}) };
   };
 
   // 1. 精确匹配
   if (Object.hasOwn(MODEL_CATALOG, cleaned)) {
-    const item = MODEL_CATALOG[cleaned];
-    return { canonicalName: cleaned, label: item.label, company: item.company, agent: item.agent, pricing: item.standard };
+    return fromCatalog(cleaned);
   }
   if (Object.hasOwn(MODEL_CATALOG, baseKey)) {
-    const item = MODEL_CATALOG[baseKey];
-    return { canonicalName: baseKey, label: item.label, company: item.company, agent: item.agent, pricing: item.standard };
+    return fromCatalog(baseKey);
   }
 
   // 官方 ID、大小写和日期快照。仅允许已知型号的别名，防止新版本套用老价格。
@@ -816,5 +822,6 @@ module.exports = {
   COMPANY_CONFIG,
   MODEL_CATALOG,
   resolveModelInfo,
-  calculateModelCost
+  calculateModelCost,
+  autoReviewCostBasis: !autoReviewRate ? 'unpriced' : autoReviewRateModel === 'gpt-6.1-sol' ? 'user-assumed-sol-rate' : 'user-assumed-model-rate'
 };

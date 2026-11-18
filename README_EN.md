@@ -1,5 +1,7 @@
 # Agentic Usage Hub — Multi-Agent Token Telemetry & Analytics Dashboard
 
+See [upgrade and migration notes](docs/UPGRADING.md), [source verification boundaries](docs/SOURCE_SUPPORT.md), and [candidate changelog](CHANGELOG.md).
+
 <p align="center">
   <b>Unified token metering, cost estimation, and local workspace attribution for OpenAI Codex · Anthropic Claude · xAI Grok · Zhipu ZCode · Google Antigravity · DeepSeek OpenClaw · Qwen Code · QoderWork CN</b>
 </p>
@@ -73,7 +75,7 @@ In modern AI-assisted software engineering, developers frequently combine multip
 - **How are QoderWork CN tokens measured?** — QoderWork bills in credits and masks the token counters in local logs as 0, so the dashboard uses an *estimated* body-length method: input tokens assume the cumulative conversation context is re-sent per call, output tokens are derived from assistant message length (deduplicated by `message.id`), and cost is converted from the 2026-09 Aliyun Bailian Qwen3.8 CNY catalog prices (÷7.15 to USD). Every related figure is clearly labelled as an estimate for trend analysis, not a billing reconciliation.
 - **How is this different from ccusage?** — ccusage already supports multiple coding agents and exports tables or JSON. This project reads its per-agent Codex, Claude, and Grok rows, handles other sources with local adapters, and adds a browser dashboard, project attribution, an image gallery, and MCP tools.
 - **How do I use this with Claude Code, Cursor, or Windsurf as an MCP server?** — Run `npx agentic-usage-hub --mcp` to start a standard Model Context Protocol (MCP) server over stdio. It exposes `get_usage_today`, `get_usage_range`, and `get_project_breakdown` tools so your AI coding assistant can directly answer "What did I spend on AI today?" or "Which project is burning the most tokens?".
-- **Does any of my data leave my machine?** — No. The hub is 100% local and offline: no telemetry, no accounts, no API keys. It only reads your existing agent logs.
+- **Does any of my data leave my machine?** — Core statistics read local logs offline, with no telemetry or API key. Optional account quota reads are disabled by default; `CODEX_ACCOUNT_QUOTA_ENABLED=1` uses the signed-in Codex CLI to query account limits online without sending prompts, responses or project logs. Initial npm/npx downloads require a connection.
 - **How do I attribute usage to a project?** — The attribution engine prefers the session's working directory and uses its full normalized path as project identity. When a source has no workspace path, it falls back to its log directory or an unnamed-session group. Project costs are estimates.
 
 ---
@@ -275,10 +277,10 @@ Default `recorded` pricing preserves logged amounts or first-index estimates. Ca
 
 ## 🛡️ Security & Privacy Principles
 
-1. **100% Local & Offline First**:
+1. **Local statistics and optional online quota reads**:
    - Agentic Usage Hub runs entirely on your local machine.
    - It never transmits your prompts, code, project names, or usage data to any remote third-party service. An optional Antigravity status helper must already be installed locally; the server does not download it at runtime.
-   - Zero API keys, passwords, or cloud credentials are required.
+   - No credentials are needed for local statistics. Optional online quota reads require a signed-in Codex CLI and explicit opt-in.
 2. **Localhost-Only by Default**:
    - The HTTP server binds to `127.0.0.1` out of the box (override with `HOST`), so other LAN machines cannot reach the dashboard;
    - CORS responses only echo `localhost`/`127.0.0.1` origins, preventing remote websites from silently scraping your local usage data through your browser.

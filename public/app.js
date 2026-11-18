@@ -85,7 +85,7 @@ async function loadDashboard() {
       const todayDate = state.cachedData.meta?.today || getLocalDateStr();
       if (state.currentDatePreset === 'milestone') {
         state.endDate = latestDate;
-        state.startDate = state.cachedData.meta?.earliestMilestone || '2026-05-22';
+        state.startDate = state.cachedData.meta?.earliestMilestone || allDates[0];
       } else if (state.currentDatePreset === '30d' || state.currentDatePreset === '7d') {
         const date = new Date(`${latestDate}T12:00:00`);
         date.setDate(date.getDate() - (state.currentDatePreset === '30d' ? 29 : 6));

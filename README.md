@@ -1,5 +1,7 @@
 # Agentic Usage Hub — 多智能体统一计量与可视化看板
 
+稳定版升级与配置迁移见 [升级说明](docs/UPGRADING.md)，已验证的数据来源范围见 [来源支持表](docs/SOURCE_SUPPORT.md)。候选版状态见 [变更记录](CHANGELOG.md)。
+
 <p align="center">
   <b>面向 OpenAI Codex · Anthropic Claude · xAI Grok · 智谱 ZCode · Google Antigravity · DeepSeek · 通义千问 Qwen · QoderWork CN 全生态 AI 编程智能体的统一 Token 计量、成本折算与本地工程归因看板</b>
 </p>
@@ -47,7 +49,7 @@
 在现代 AI 辅助研发工作中，开发者通常组合使用多种 Agent 编程助手（如 OpenAI Codex CLI、Claude Code、xAI Grok CLI、智谱 AI ZCode、Google Antigravity/Gemini、DeepSeek OpenClaw/Reasonix、通义千问 Qwen Code、QoderWork CN 以及 Codex 原生生图工具）。由于各工具的计费机制、缓存策略、日志存放路径及数据格式高度异构，传统工具往往难以提供全生命周期的统一视图。
 
 **Agentic Usage Hub** 是一套轻量、高性能、零第三方重框架依赖的本地全景监控面板：
-- **多模型成本参考**：内置 Anthropic、xAI、OpenAI、Google、DeepSeek、智谱与 Qwen 等模型的参考费率，区分输入、输出与缓存读取；未知模型采用通用兜底价，金额仅供趋势比较，具体费率需与服务商核对；
+- **多模型成本参考**：内置 Anthropic、xAI、OpenAI、Google、DeepSeek、智谱与 Qwen 等模型的参考费率，区分输入、输出与缓存读取；未知模型保留 Token 并显示暂无费率，金额仅供趋势比较，具体费率需与服务商核对；
 - **今日实时看板 (Today Live)**：跨厂商聚合今日大模型活跃吞吐与生图工具（`GPT-Image-2`）的实时构成；
 - **全景时间走势图 (Timeline & Chart.js)**：支持「🏢 按厂商大类」与「🧬 按核心模型」双维度自由切换，提供对数刻度、自定义 Y 轴缩放、区间预设与明细表格检索；
 - **本地工程归因 (Projects Attribution)**：按会话记录的工作目录归因；使用完整规范化路径区分同名工程，不按名称关键词合并；
@@ -65,7 +67,7 @@
 - **QoderWork CN 是积分计费，Token 数怎么统计？** —— QoderWork 本地日志中的 token 计数字段被打码为 0（积分制），看板采用「正文估算」口径：按会话 jsonl 中消息正文长度折算 Token（输入按累计上下文、输出按响应正文，并对同一 `message.id` 去重），再按 2026-09 阿里云百炼 Qwen3.8 目录价（CNY÷7.15 折美元）展示成本，所有相关数字均带「估算」标识。该口径为近似值，不追求与平台积分账目逐一对账，只用于横向观察用量趋势。
 - **与 ccusage 有什么区别？** —— ccusage 也支持多个编程 Agent 的本地用量统计，并可输出表格或 JSON。本项目从 ccusage 的按 Agent 明细中读取 Codex、Claude、Grok，再用独立适配器处理其他来源，提供浏览器看板、工程归因、生图画廊与 MCP 查询。
 - **如何作为 MCP Server 接入 Claude Code 或 Cursor？** —— 运行 `npx agentic-usage-hub --mcp` 即可启动标准 Model Context Protocol (MCP) 服务，向 AI 助手暴露 `get_usage_today`、`get_usage_range`、`get_project_breakdown` 三大工具，允许你在对话中直接询问“我今天消耗了多少 Token”、“哪个项目最烧钱”。
-- **我的数据会离开本机吗？** —— 不会。看板 100% 本地离线运行：无遥测上报、无账号、无需任何 API Key，只读取你已有的 Agent 日志。
+- **我的数据会离开本机吗？** —— 核心用量统计只读本地日志，可离线运行，无遥测上报，无需 API Key。可选账号额度查询默认关闭；显式设置 `CODEX_ACCOUNT_QUOTA_ENABLED=1` 后，使用已登录的 Codex CLI 联网读取账号额度，不发送提示词、回复或项目日志。首次通过 npm/npx 下载程序需要网络。
 - **如何把 Token 消耗归因到具体项目？** —— 优先读取会话中的工作目录，以规范化完整路径作为项目身份；来源缺少目录时，使用其日志目录或未命名会话组。工程成本也是估算值。
 
 ---

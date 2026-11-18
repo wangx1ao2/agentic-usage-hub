@@ -11,7 +11,10 @@ const { queryDashboard, queryProjects, startWarmup } = require('../lib/usage-ser
 const { isObject, validateToolArguments } = require('../lib/validation');
 const pkg = require('../package.json');
 
-const PROTOCOL_VERSION = '2024-11-05';
+// Support the handshake protocol family without pretending to implement the
+// newer stateless server/discover lifecycle. Auto clients can fall back here.
+const PROTOCOL_VERSION = '2025-11-25';
+const HANDSHAKE_VERSIONS = new Set(['2024-11-05', '2025-03-26', '2025-06-18', PROTOCOL_VERSION]);
 
 const TOOLS = [
   {
@@ -85,7 +88,7 @@ function handleInitialize(id, params) {
     jsonrpc: '2.0',
     id,
     result: {
-      protocolVersion: PROTOCOL_VERSION,
+      protocolVersion: HANDSHAKE_VERSIONS.has(params?.protocolVersion) ? params.protocolVersion : PROTOCOL_VERSION,
       capabilities: {
         tools: {}
       },
@@ -320,6 +323,9 @@ function startServer() {
     input: process.stdin,
     output: process.stdout,
     terminal: false
+  });
+  rl.once('close', () => {
+    require('../lib/usage-service').dispose().catch(error => process.stderr.write(`[MCP shutdown] ${error.message}\n`));
   });
 
   rl.on('line', (line) => {

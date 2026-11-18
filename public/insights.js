@@ -25,8 +25,11 @@ function sourceRows(sources) {
   const statuses = { ready: '有用量记录', empty: '已读取，暂无用量', unavailable: '未找到日志', partial: '部分读取失败', disabled: '未启用' };
   return Object.entries(sources || {}).map(([key, source]) => {
     const status = source.status || (source.error ? 'partial' : source.available ? 'ready' : 'unavailable');
+    const nextStep = status === 'unavailable' ? '检查下方日志路径是否存在；自定义目录可在环境变量中配置。'
+      : status === 'empty' ? '目录已读取；完成一次 Agent 请求后刷新，或检查所选日期范围。'
+        : status === 'partial' ? '保留最后成功数据。修复目录或日志问题后，可在此重试。' : '';
     return `<tr data-key="${esc(key)}"><th scope="row">${esc(labels[key] || key)}${source.stale ? '<span class="insights-badge">旧数据</span>' : ''}</th>
-      <td>${esc(statuses[status] || status)}${source.refreshing ? ' · 更新中' : ''}${source.error ? `<p class="insights-error">${esc(source.error)}</p>` : ''}</td>
+      <td>${esc(statuses[status] || status)}${source.refreshing ? ' · 更新中' : ''}${source.error ? `<p class="insights-error">${esc(source.error)}</p>` : ''}${nextStep ? `<p>${nextStep}</p>` : ''}</td>
       <td>${esc(source.lastSuccessfulAt ? new Date(source.lastSuccessfulAt).toLocaleString('zh-CN') : '尚未成功读取')}</td>
       <td>${Number(source.parseErrors || 0)} / ${Number(source.readErrors || 0)}${source.pendingLines ? `<br>等待补全 ${Number(source.pendingLines)} 行` : ''}${source.undatedRecords ? `<br>${Number(source.undatedRecords)} 条缺少日期` : ''}</td>
       <td>${esc(source.coverage?.from || '—')}<br>${esc(source.coverage?.to || '—')}</td>

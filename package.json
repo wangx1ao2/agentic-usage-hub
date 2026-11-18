@@ -1,7 +1,7 @@
 {
   "name": "agentic-usage-hub",
-  "version": "1.0.1",
-  "description": "Local-first token usage, cache-hit and USD cost analytics dashboard for AI coding agents: OpenAI Codex CLI, Claude Code, Google Antigravity/Gemini, xAI Grok, DeepSeek OpenClaw/Reasonix, Zhipu ZCode and Tongyi Qwen Code. Runs fully offline via npx, with per-model pricing, live today view and per-project attribution.",
+  "version": "1.1.0-rc.1",
+  "description": "Local-first token usage, cache-hit and USD cost analytics for coding agents. Offline log statistics, per-model pricing, live monitoring, project attribution and opt-in account quota reads.",
   "main": "unified-server.js",
   "bin": {
     "agentic-usage-hub": "bin/agentic-usage-hub.js"
@@ -11,6 +11,8 @@
     "test": "node --require ./tests/fixture-environment.cjs --test --test-concurrency=1 \"tests/*.test.js\"",
     "test:ui": "node tests/run-ui-check.cjs",
     "test:motion": "node tests/run-ui-check.cjs --motion",
+    "test:upstream": "node scripts/check-ccusage.cjs",
+    "test:package": "node scripts/check-package.cjs",
     "benchmark": "node tests/index-benchmark.cjs",
     "daily": "ccusage codex daily",
     "monthly": "ccusage codex monthly"
@@ -57,6 +59,9 @@
     "LICENSE",
     "README.md",
     "README_EN.md",
+    "CHANGELOG.md",
+    "docs/UPGRADING.md",
+    "docs/SOURCE_SUPPORT.md",
     "llms.txt",
     "docs/images"
   ],
@@ -65,7 +70,7 @@
     "node": ">=20.0.0"
   },
   "dependencies": {
-    "ccusage": "^20.0.20",
-    "chart.js": "^4.5.1"
+    "ccusage": "20.0.51",
+    "chart.js": "4.6.1"
   }
 }

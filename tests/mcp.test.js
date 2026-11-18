@@ -6,9 +6,16 @@ test('MCP Server: handleInitialize returns standard protocol capabilities', asyn
   const res = mcp.handleInitialize('init-1', {});
   assert.equal(res.jsonrpc, '2.0');
   assert.equal(res.id, 'init-1');
-  assert.equal(res.result.protocolVersion, '2024-11-05');
+  assert.equal(res.result.protocolVersion, '2025-11-25');
   assert.ok(res.result.capabilities.tools);
   assert.equal(res.result.serverInfo.name, 'agentic-usage-hub');
+});
+
+test('MCP negotiates supported handshake versions and counters unsupported versions', () => {
+  for (const protocolVersion of ['2024-11-05', '2025-03-26', '2025-06-18', '2025-11-25']) {
+    assert.equal(mcp.handleInitialize(0, { protocolVersion }).result.protocolVersion, protocolVersion);
+  }
+  assert.equal(mcp.handleInitialize(0, { protocolVersion: '2026-07-28' }).result.protocolVersion, '2025-11-25');
 });
 
 test('MCP Server: handleToolsList returns all 3 telemetry tools', async () => {

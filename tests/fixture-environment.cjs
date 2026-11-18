@@ -14,6 +14,10 @@ Object.assign(process.env, {
   AGENTIC_CACHE_DIR: path.join(root, 'cache'),
   AGENTIC_DISABLE_DOTENV: '1',
   BUSINESS_API_PROJECTS: '',
+  CODEX_ACCOUNT_QUOTA_ENABLED: '0',
+  // Existing review fixtures deliberately exercise an explicitly chosen rate.
+  // Default/unconfigured behavior has a separate child-process regression.
+  CODEX_AUTO_REVIEW_RATE_MODEL: 'gpt-6.1-sol',
   CODEX_ACCOUNT_QUOTA_DISABLED: '1',
   CODEX_HOME: path.join(root, '.codex'),
   CLAUDE_SESSIONS_DIR: path.join(root, '.claude', 'projects'),

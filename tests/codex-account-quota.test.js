@@ -6,11 +6,40 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { EventEmitter } = require('node:events');
 const { PassThrough } = require('node:stream');
-const { readAccountRateLimits, normalizeAccountQuota, createAccountQuotaMonitor } = require('../lib/codex-account-quota');
+const { readAccountRateLimits, normalizeAccountQuota, createAccountQuotaMonitor, accountQuotaEnabled } = require('../lib/codex-account-quota');
 const { buildQuotaHistory } = require('../lib/codex-quota-history');
 const time = (hour, minute = 0) => new Date(2026, 9, 29, hour, minute).getTime();
 const result = (used = 86, reset = time(20)) => ({ rateLimits: { limitId: 'codex', planType: 'plus',
   primary: { usedPercent: used, resetsAt: reset / 1000, windowDurationMins: 300 } } });
+
+test('network quota requires explicit opt-in, independently of business projects, and disable wins', async t => {
+  const names = ['CODEX_ACCOUNT_QUOTA_ENABLED', 'CODEX_ACCOUNT_QUOTA_DISABLED', 'BUSINESS_API_PROJECTS'];
+  const original = Object.fromEntries(names.map(name => [name, process.env[name]]));
+  t.after(() => { for (const name of names) {
+    if (original[name] === undefined) delete process.env[name]; else process.env[name] = original[name];
+  } });
+  process.env.CODEX_ACCOUNT_QUOTA_ENABLED = '';
+  process.env.CODEX_ACCOUNT_QUOTA_DISABLED = '';
+  process.env.BUSINESS_API_PROJECTS = 'F:/fixture/business';
+  let calls = 0;
+  const monitor = createAccountQuotaMonitor({ filename: path.join(process.env.HOME, 'opt-in.jsonl'),
+    read: async () => { calls++; return result(); } });
+  assert.equal(accountQuotaEnabled(), false);
+  await monitor.capture(true);
+  assert.equal(calls, 0);
+  assert.equal(monitor.getDiagnostics().networkAccess, 'disabled');
+  process.env.BUSINESS_API_PROJECTS = '';
+  process.env.CODEX_ACCOUNT_QUOTA_ENABLED = '1';
+  assert.equal(accountQuotaEnabled(), true);
+  await monitor.capture(true);
+  assert.equal(calls, 1);
+  process.env.CODEX_ACCOUNT_QUOTA_DISABLED = '1';
+  await monitor.capture(true);
+  assert.equal(calls, 1);
+  assert.equal(monitor.getDiagnostics().status, 'disabled');
+  assert.equal(monitor.getSnapshots().length, 1, 'Disabling network must retain saved history');
+  await monitor.dispose();
+});
 
 test('account quota selects only the Codex five-hour bucket, including a secondary bucket', () => {
   assert.equal(normalizeAccountQuota(result(), time(16)).usedPercent, 86);

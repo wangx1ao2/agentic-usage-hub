@@ -5,7 +5,7 @@
 > OpenClaw/Reasonix, Zhipu ZCode, Tongyi Qwen Code, QoderWork CN). Reads agent session
 > logs read-only and aggregates tokens, prompt-cache hits and USD cost per model, per
 > vendor and per local project. QoderWork CN uses an estimated body-length token method
-> (the platform masks real counters behind credit billing). 100% offline, zero telemetry.
+> (the platform masks real counters behind credit billing). Offline core statistics, zero telemetry. Optional online account quota reads require explicit CODEX_ACCOUNT_QUOTA_ENABLED=1; initial npm/npx installation requires network access.
 
 ## Run
 

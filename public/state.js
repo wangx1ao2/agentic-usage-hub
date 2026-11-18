@@ -4,7 +4,7 @@ export const state = {
   currentAxisMode: 'cost',
   chartDimension: 'company',
   currentDatePreset: '30d',
-  startDate: '2026-05-22',
+  startDate: null,
   endDate: null,
   yScaleMode: 'auto',
   isLogScale: false,
