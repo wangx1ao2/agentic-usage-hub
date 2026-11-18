@@ -64,7 +64,8 @@ jobs:
     - run: npm test
 
   browser:
-    runs-on: ubuntu-latest
+    # Keep the browser OS compatible with the pinned Playwright revision.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
     - uses: actions/checkout@v6
