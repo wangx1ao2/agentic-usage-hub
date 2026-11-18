@@ -46,6 +46,8 @@
 
 ## 外部状态
 
-GitHub SSH 已使用官方公布的主机公钥验证，但当前 SSH 身份没有仓库权限。HTTPS `git push --dry-run` 已成功，可以继续通过已有 HTTPS 凭据推送候选分支；尚未推送。公共 GitHub API 遇到匿名速率限制，不能据此声称远程 CI 已运行。
+候选分支已通过已有 HTTPS 凭据推送。[第一轮 GitHub Actions](https://github.com/wangx1ao2/agentic-usage-hub/actions/runs/44331579316) 已实际运行：Linux/Windows 的 Node 24/26、Windows Node 22 通过；macOS 尚在队列中。
+
+首轮发现并修正三个测试兼容问题：Linux Playwright 缓存目录被隔离 HOME 改变；Linux 文件 mtime 有亚毫秒精度，测试应与实际文件时间比较；Node 20 不展开测试 glob，改为跨平台显式文件枚举。浏览器绑定与 Chromium 安装版本固定为 Playwright 1.60.0。修正后的远程完整结果仍待验证，首轮局部成功不能替代最终矩阵通过。
 
 以上未完成项仍属于原目标，不因本地测试通过而视为完成。候选版尚未开始真实日历观察，亦未执行 npm 发布。

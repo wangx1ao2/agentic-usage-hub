@@ -8,7 +8,7 @@
   },
   "scripts": {
     "start": "node unified-server.js",
-    "test": "node --require ./tests/fixture-environment.cjs --test --test-concurrency=1 \"tests/*.test.js\"",
+    "test": "node scripts/run-tests.cjs",
     "test:ui": "node tests/run-ui-check.cjs",
     "test:motion": "node tests/run-ui-check.cjs --motion",
     "test:upstream": "node scripts/check-ccusage.cjs",

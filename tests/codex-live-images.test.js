@@ -35,7 +35,7 @@ test('image-only tasks show image activity without fabricating text or image tok
   assert.equal(result.imageActivity.filesLastMinute, 1);
   assert.equal(result.imageActivity.tokensPerSecond, null);
   assert.equal(result.imageActivity.tokenUsageAvailable, false);
-  assert.equal(result.imageActivity.latestImageAt, now - 1000);
+  assert.equal(result.imageActivity.latestImageAt, fs.statSync(path.join(images, 'one.png')).mtimeMs);
 });
 
 test('continued image output remains observable after text usage expires and across monitor restarts', async t => {
@@ -48,7 +48,7 @@ test('continued image output remains observable after text usage expires and acr
       const result = await monitor.getSnapshot();
       assert.equal(result.totals.tokensPerSecond, 0);
       assert.equal(result.imageActivity.filesLastFiveMinutes, index + 1);
-      assert.equal(result.imageActivity.latestImageAt, now - 1);
+      assert.equal(result.imageActivity.latestImageAt, fs.statSync(path.join(root, `image-${index}.png`)).mtimeMs);
       now += 65_000;
     }
     monitor.dispose();

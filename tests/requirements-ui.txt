@@ -1,0 +1,2 @@
+# Browser revision and Python bindings must be installed from the same version.
+playwright==1.60.0
