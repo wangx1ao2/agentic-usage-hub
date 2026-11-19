@@ -1,8 +1,10 @@
 # Changelog
 
-## 1.1.0-rc.1 — candidate under verification
+## 1.1.0-rc.2 — candidate under verification
 
 This source version has not yet been published to npm. See [verification progress](https://github.com/wangx1ao2/agentic-usage-hub/blob/codex/stable-release-prep/docs/STABLE_UPGRADE_PROGRESS.md).
+
+- Supersede the unpublished local rc.1: unknown Claude family names, including `claude-4.1-opus`, retain their original identity and unknown price instead of inheriting Sonnet rates. Previously captured estimates remain recoverable.
 
 - Consolidate the existing request ledger, background indexes, source diagnostics, project drilldown, pricing snapshots, exports, Codex live monitoring and business API observations into versioned source.
 - Upgrade ccusage to 20.0.51 and Chart.js to 4.6.1; synchronize the browser asset and remove stale lockfile metadata/dependencies.

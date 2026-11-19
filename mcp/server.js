@@ -33,7 +33,7 @@ const TOOLS = [
   },
   {
     name: 'get_usage_range',
-    description: 'Get historical token usage and estimated USD cost for a specific date range, grouped by AI company/vendor or by individual model. Includes QoderWork CN sessions (token counts estimated from message body since the platform masks usage).',
+    description: 'Get historical token usage and estimated USD cost for a specific date range, grouped by AI company/vendor or by individual model. QoderWork and Antigravity token counts are heuristic estimates; actualOnly excludes them. Inferred reference models do not identify the model actually served.',
     inputSchema: {
       type: 'object',
       properties: {

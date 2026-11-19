@@ -144,6 +144,7 @@ Qwen 另参阅[下线机制](https://help.aliyun.com/zh/model-studio/model-depre
 - 72 条目录项为 `verified`，5 条为 `verified-historical`，19 条为 `reference-unavailable`，4 条为 `provider-required`；审批路由单独为 `user-assumption`。没有待审查的 `legacy-reference`，但核对状态不表示全组件都有价格，未公开或缺模式的金额继续未知。
 - Haiku 5.5 长输入、Grok 已核对新型号的 200K 边界、Claude 缓存写入有效期拆分已接入共享规则。未知服务档位不能借其他型号倍率。
 - 价目抽屉显示状态、核对日期、来源和有效期限；中英文 README 与迁移说明同步。`pricingContext` 随导出保留来源和缺口。
+- rc.2 修正 Claude 家族的旧兜底匹配：`claude-4.1-opus`、`claude-4-opus`、`claude-mystery` 等缺确切参考时保留原名和未知金额，不改配其他 Sonnet 型号。旧捕获金额不改写，当前重算使用新规则；明确报告的 0 美元仍保留。此修正来自发布前复核现有问题 #2，原 rc.1 在观察开始前被替代。
 
 ## 尚需完成
 

@@ -624,7 +624,7 @@ function resolveModelInfo(rawModelName, defaultAgent = 'openclaw') {
 
   // Anthropic Claude
   if (m.includes('fable') || m.includes('claude-5') || m.includes('claude-fable')) {
-    return { canonicalName: 'claude-fable-5', label: 'Claude Fable 5 (Next-Gen Autonomous Agent)', company: 'Anthropic', agent: 'claude', pricing: MODEL_CATALOG['claude-fable-5'].standard };
+    return unpriced('Anthropic','claude');
   }
   if (m.includes('claude-4.5') || m.includes('claude-4-5')) {
     if (m.includes('opus')) {
@@ -633,10 +633,7 @@ function resolveModelInfo(rawModelName, defaultAgent = 'openclaw') {
     return { canonicalName: 'claude-4.5-sonnet', label: 'Claude 4.5 Sonnet', company: 'Anthropic', agent: 'claude', pricing: MODEL_CATALOG['claude-4.5-sonnet'].standard };
   }
   if (m.includes('claude-4')) {
-    if (m.includes('haiku')) {
-      return { canonicalName: 'claude-4-haiku', label: 'Claude 4 Haiku', company: 'Anthropic', agent: 'claude', pricing: MODEL_CATALOG['claude-4-haiku'].standard };
-    }
-    return { canonicalName: 'claude-4.5-sonnet', label: 'Claude 4.5 Sonnet', company: 'Anthropic', agent: 'claude', pricing: MODEL_CATALOG['claude-4.5-sonnet'].standard };
+    return unpriced('Anthropic','claude');
   }
   if (m.includes('claude-3-7') || m.includes('claude-3.7')) {
     return { canonicalName: 'claude-3-7-sonnet', label: 'Claude 3.7 Sonnet', company: 'Anthropic', agent: 'claude', pricing: MODEL_CATALOG['claude-3-7-sonnet'].standard };
@@ -654,7 +651,7 @@ function resolveModelInfo(rawModelName, defaultAgent = 'openclaw') {
     return { canonicalName: 'claude-3-haiku', label: 'Claude 3 Haiku', company: 'Anthropic', agent: 'claude', pricing: MODEL_CATALOG['claude-3-haiku'].standard };
   }
   if (m.includes('claude')) {
-    return { canonicalName: 'claude-3-5-sonnet', label: 'Claude 3.5 Sonnet', company: 'Anthropic', agent: 'claude', pricing: MODEL_CATALOG['claude-3-5-sonnet'].standard };
+    return unpriced('Anthropic','claude');
   }
 
   // xAI Grok

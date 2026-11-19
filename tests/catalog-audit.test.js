@@ -98,3 +98,28 @@ test('actual Claude response speed and geography govern pricing, and survive cap
   close(quoteModelUsage('grok-4.7',usage,{...options,serviceTier:'priority'}).cost,standardGrok*2);
   assert.equal(quoteModelUsage('grok-build-0.1',usage,{...options,serviceTier:'batch'}).cost,null);
 });
+
+test('unidentified Claude family names never become another Sonnet model or lose an old captured estimate', () => {
+  for (const model of ['claude-mystery','claude-4-opus','claude-4.1-opus','claude-4-haiku-new','fable-unknown']) {
+    const row = createRequestRecord({source:'claude',id:model,model,timestamp:'2026-11-19T04:00:00Z',...usage});
+    assert.equal(row.canonicalModel,model);
+    assert.equal(row.company,'Anthropic');
+    assert.equal(row.costUSD,null);
+    assert.equal(row.unpriced,true);
+    assert.equal(row.totalTokens,16000);
+    const reported = createRequestRecord({source:'claude',id:model,model,timestamp:'2026-11-19T04:00:00Z',...usage,costUSD:0});
+    assert.equal(reported.costUSD,0);
+    assert.equal(reported.costBasis,'reported');
+  }
+  const directory = fs.mkdtempSync(path.join(process.env.HOME,'claude-alias-history-'));
+  const model = 'claude-4.1-opus';
+  const current = createRequestRecord({source:'claude',id:'old-alias',model,timestamp:'2026-11-19T04:00:00Z',...usage});
+  const original = {...current,canonicalModel:'claude-4.5-sonnet',costUSD:0.0465,costBasis:'catalog-estimate',costComplete:true,unpriced:false,
+    unpricedTokens:0,pricingContext:{evidence:MODEL_CATALOG['claude-4.5-sonnet'].pricingEvidence,issues:[]}};
+  createPricingHistory({directory}).apply([original]);
+  const restarted = createPricingHistory({directory});
+  assert.equal(restarted.apply([current])[0].costUSD,0.0465,'The correction must not rewrite the original captured estimate');
+  assert.equal(restarted.apply([current],{pricingMode:'current'})[0].costUSD,null);
+  assert.equal(require('../models-pricing').resolveModelInfo('anthropic/claude-3-7-sonnet-20250219').canonicalName,'claude-3-7-sonnet');
+  assert.equal(require('../models-pricing').resolveModelInfo('claude-opus-4-5').canonicalName,'claude-4.5-opus');
+});

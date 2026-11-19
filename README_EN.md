@@ -24,7 +24,7 @@ See [upgrade and migration notes](docs/UPGRADING.md), [source verification bound
 
 ## 📸 Screenshots & UI Preview
 
-These are actual `1.1.0-rc.1` screens generated from isolated synthetic logs, with a visible demo label and no personal records. Reproduce them from source with `node scripts/capture-previews.cjs`.
+These are actual `1.1.0-rc.2` screens generated from isolated synthetic logs, with a visible demo label and no personal records. Reproduce them from source with `node scripts/capture-previews.cjs`.
 
 <p align="center">
   <b>Panoramic Timeline Dashboard</b><br>
@@ -273,6 +273,8 @@ Image generation is displayed separately: local image-tool records do not expose
 Shared filters: inclusive `startDate` / `endDate` (`YYYY-MM-DD`), `agent` (also `reasonix`), `projectId` (an API-returned ID), `tier`, `actualOnly=true|false`, `pricingMode=recorded|current`, and `pricingVersion`. A saved version requires `current` mode. Dashboard supports source, tier, actual-only and pricing selection; its trend date selection is applied by the page. MCP range/project tools support the same source/date/tier/actual-only/pricing selections.
 
 The Sources panel distinguishes missing logs, empty logs and read failures. Retained snapshots keep their original successful-read time. Project cards open daily totals and paginated records. Actual-only excludes body-based token estimates such as QoderWork and Antigravity; logged token counts may still have estimated dollar amounts.
+
+Antigravity transcripts currently use a heuristic of 22,000 input tokens per step (75% assumed cache share) and output text/thinking characters divided by 3.5. If no model is logged, its reference assumption is Gemini 3.7 Flash; QoderWork uses Qwen3.8 Max in that case. Records disclose `estimation.modelBasis` and `assumedModel`; these do not identify the actual served model or bill.
 
 JSON exports contain `metadata` and `records`. CSV uses a UTF-8 BOM, a `metadata,<JSON>` first row, a column-header second row, and data rows. Metadata carries timezone, millisecond timestamp units, filters, coverage, freshness and pricing versions. Records include estimation evidence and `dateBasis`; date-only evidence never becomes a fabricated request timestamp. Missing QoderWork timestamps may use the file modification day, and Antigravity may inherit the last known session day; both are marked and counted in date diagnostics. Exports omit conversation bodies and guard text cells against spreadsheet formulas.
 

@@ -72,11 +72,25 @@ test('date-only evidence stays at day precision and source estimates disclose in
   assert.equal(qoder.records[0].timestamp, null);
   assert.equal(qoder.records[0].date, date);
   assert.equal(qoder.records[0].dateBasis, 'file-modification-estimate');
+  assert.equal(qoder.records[0].estimated, true);
+  assert.equal(qoder.records[0].estimation.modelBasis, 'default-reference-assumption');
+  assert.equal(qoder.records[0].estimation.assumedModel, 'qwen3.8-max');
   const agy = parseAntigravity(JSON.stringify({ timestamp: '2026-10-18T04:00:00Z', content: 'one' }) + '\n'
     + JSON.stringify({ content: 'two' }), '/brain/session/conversations/a/transcript.jsonl');
   assert.equal(agy.undatedRecords, 1);
   assert.equal(agy.records[1].timestamp, null);
   assert.equal(agy.records[1].dateBasis, 'inherited-session-date-estimate');
+  assert.equal(agy.records[0].estimated, true);
+  assert.equal(agy.records[0].inputTokens, 5500);
+  assert.equal(agy.records[0].cacheReadTokens, 16500);
+  assert.equal(agy.records[0].totalTokens, 22000 + agy.records[0].outputTokens);
+  assert.equal(agy.records[0].estimation.modelBasis, 'default-reference-assumption');
+  assert.equal(agy.records[0].estimation.assumedModel, 'Gemini 3.7 Flash');
+  const explicit = parseAntigravity(JSON.stringify({ timestamp: '2026-10-18T04:00:00Z', model: 'claude-mystery', content: 'one' }), '/logs/transcript.jsonl').records[0];
+  assert.equal(explicit.model, 'claude-mystery');
+  assert.equal(explicit.costUSD, null);
+  assert.equal(explicit.estimation.modelBasis, 'logged-model');
+  assert.equal(explicit.estimation.assumedModel, undefined);
   assert.equal(parseAntigravity('{"content":"no date"}', '/logs/transcript.jsonl').records.length, 0);
   const logged = parseUsageLog('qwen', JSON.stringify({ date, model: 'qwen-plus', promptTokens: 100 }), '/logs/usage.jsonl');
   assert.equal(logged.records[0].dateBasis, 'logged-day');

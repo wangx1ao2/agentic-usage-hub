@@ -8,8 +8,8 @@
 | Claude Code | `~/.claude/projects` | 优先直接请求记录；输入、缓存读取/写入、输出分列；按请求与消息身份识别快照 | ccusage 20.0.51 标准格式真实 CLI 夹具；本机网关兼容格式有缺失请求 ID 的身份差异，见下方限制；不宣称已验证官方 CLI 所有版本 |
 | Grok | ccusage 管理的来源 | 仅纳入 ccusage 选择的来源，保留模型身份 | 来源选择夹具；真实日志/客户端版本待补充 |
 | Qwen Code | `~/.qwen`、`usage.jsonl` | 实测计数；北京等明确地域参考价，缓存/思考模式缺失保留价格缺口 | 追加、截断、轮转、删除、重叠目录、工程归因及缓存写入守恒夹具；真实客户端版本待补充 |
-| QoderWork CN | `~/.qoderworkcn/projects` | 正文长度估算 Token，费用也是估算 | 消息去重、估算和工程归因夹具；不宣称与平台积分账单一致 |
-| Antigravity | `~/.gemini/antigravity/brain` | 来源记录受限；估算必须标识 | 解析与估算筛选夹具；真实客户端版本待补充 |
+| QoderWork CN | `~/.qoderworkcn/projects` | 正文长度估算 Token，费用也是估算；缺模型时 Qwen3.8 Max 参考假设随记录披露 | 消息去重、估算和工程归因夹具；不宣称与平台积分账单一致 |
+| Antigravity | `~/.gemini/antigravity/brain` | 每步 22,000 输入、75% 缓存比例、字符 ÷ 3.5 输出均为启发式估算；缺模型时 Gemini 3.7 Flash 参考假设随记录披露 | 解析、Token 守恒与估算筛选夹具；真实客户端版本待补充 |
 | ZCode | `~/.zcode/cli/db/db.sqlite` | 只读 SQLite；按实际记录及档位参考价 | schema、异常恢复、标准/旗舰比较夹具；需运行时 SQLite 支持 |
 | OpenClaw / Reasonix | `~/.openclaw/.../sessions`、`~/.reasonix/usage.jsonl` | 日志计量和目录参考金额 | 解析、汇总与来源筛选夹具；真实客户端版本待补充 |
 | 业务 API | 显式配置工程的 `.local/`、`logs/` | 旧响应日志或 `ai-usage.jsonl`；实测 Token、报告金额或估算 | 599 条本机只读抽样请求 Token 分项守恒；另有请求合并、工程边界、轮转、Qwen 缓存写入、HTTP/MCP/导出夹具；应用格式而非通用网络代理 |

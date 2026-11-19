@@ -24,7 +24,7 @@
 
 ## 📸 界面预览 (Screenshots)
 
-下图为 `1.1.0-rc.1` 实际界面，使用隔离的合成日志生成，均标有“演示数据”；不包含个人记录。可在源码目录运行 `node scripts/capture-previews.cjs` 重建。
+下图为 `1.1.0-rc.2` 实际界面，使用隔离的合成日志生成，均标有“演示数据”；不包含个人记录。可在源码目录运行 `node scripts/capture-previews.cjs` 重建。
 
 <p align="center">
   <b>全景时间走势看板 (Timeline Dashboard)</b><br>
@@ -250,6 +250,8 @@ npm test
 公共筛选项：`startDate` / `endDate`（含首尾的 `YYYY-MM-DD`）、`agent`（另支持 `reasonix`）、`projectId`（API 返回的 ID）、`tier`、`actualOnly=true|false`、`pricingMode=recorded|current`、`pricingVersion`。指定价格版本须同时使用 `current`。看板接口支持来源、档位、实际记录与价格选择；趋势日期由页面筛选。MCP 的日期范围和工程工具也支持来源、日期、档位、实际记录与价格选择。
 
 来源状态面板区分缺少日志、空日志和读取失败；保留旧数据时展示旧数据标记与原来的成功时间。工程卡片可展开按日统计及分页记录。仅查看实际记录会排除 QoderWork、Antigravity 等正文推算的 Token，金额仍可能是目录价估算。
+
+Antigravity 的 transcript 目前按每步 22,000 输入 Token（缓存参考比例 75%）及正文/思考字符数 ÷ 3.5 估算输出，均为启发式估算。日志未给模型时使用 Gemini 3.7 Flash 参考假设；QoderWork 缺模型时使用 Qwen3.8 Max 参考假设。记录的 `estimation.modelBasis` / `assumedModel` 会披露这些选择，不据此认定实际服务模型或费用。
 
 JSON 导出包含 `metadata` 和 `records`；CSV 使用 UTF-8 BOM，第一行为 `metadata,<JSON>`，第二行为列名，其后为记录。元数据带服务器时区、时间戳单位（毫秒）、筛选条件、覆盖范围、新鲜度及价格版本；记录带估算依据与 `dateBasis`。缺少精确时间时仅保留日期；QoderWork 可使用文件修改日、Antigravity 可沿用会话最近已知日期，均显式标注并计入日期缺失诊断。导出不包含会话正文；模型名、工程路径等文本会防护 CSV 公式解释。
 
