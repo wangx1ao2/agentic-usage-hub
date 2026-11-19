@@ -44,6 +44,8 @@ CODEX_AUTO_REVIEW_RATE_MODEL=gpt-6.1-sol
 
 也可选择目录中的其他已知模型；无效型号保留未定价。此配置只选估算费率，不表示实际扣费。修改配置后重启服务，价格版本按内容区分，已捕获的历史记录不会被静默替换。
 
+“recorded”保留首次捕获金额及当时选择的参考模型，即使后来修改或关闭估算配置；需要比较新费率时切换为“current”重算。已报告的真实日志金额（包括 0）与目录估算分别处理。
+
 ## 安装和验证
 
 从源码升级时执行 `npm ci`，然后运行 `npm test`、`npm run test:upstream` 和 `npm run test:package`。浏览器验证另需 Python、Playwright 和其 Chromium，可运行 `npm run test:ui` 与 `npm run test:motion`。

@@ -11,6 +11,8 @@ This source version has not yet been published to npm. See [verification progres
 - Make auto-review rate assumptions configurable and leave costs unknown by default; preserve first-index price history and invalidate caches on configuration changes.
 - Negotiate supported MCP handshake versions through 2025-11-25 and dispose background work when stdin closes.
 - Remove fixed initial dates, improve source recovery guidance and display unpriced model rates as unknown.
+- Retain business usage from symlinked workspaces on macOS/Windows; preserve reported zero costs and split cache-write token counts.
+- Distinguish Claude request/message identities and disclose requestless gateway assumptions; retain original reviewer estimates and their context across configuration changes.
 - Add real upstream CLI contract checks and clean-install/tarball HTTP/MCP smoke tests; expand CI to Node 22/24/26, macOS, UI and motion checks.
 
 Configuration changes and rollback steps: [Upgrading](docs/UPGRADING.md). Source verification boundaries: [Source support](docs/SOURCE_SUPPORT.md).

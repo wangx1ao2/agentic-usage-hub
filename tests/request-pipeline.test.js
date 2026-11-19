@@ -49,6 +49,33 @@ test('file lifecycle retains last good contributions after read/discovery errors
   assert.equal(index.getDiagnostics().status, 'empty');
 });
 
+test('Claude message IDs reused by different request IDs retain each request while deduplicating its stream', () => {
+  const row = (requestId, input, cached, output) => JSON.stringify({ type:'assistant',
+    timestamp:'2026-11-18T04:00:00Z', sessionId:'sample-session', requestId,
+    message:{id:'reused-message',model:'claude-sonnet-4-6',usage:{input_tokens:input,
+      cache_read_input_tokens:cached,output_tokens:output}} });
+  const parsed = parseUsageLog('claude', [row('a',100,20,5),row('a',100,20,10),
+    row('b',200,30,20),row('b',200,30,20)].join('\n')+'\n','sample.jsonl');
+  assert.equal(parsed.records.length, 2);
+  assert.equal(parsed.records.reduce((sum,row)=>sum+row.totalTokens,0), 380);
+  assert.equal(parsed.records.reduce((sum,row)=>sum+row.outputTokens,0), 30);
+  assert.equal(new Set(parsed.records.map(row=>row.id)).size, 2);
+  assert.ok(parsed.records.every(row=>row.pricingContext.usageIdentity==='request-and-message-id'));
+});
+
+test('logged zero cost remains reported and split cache writes are counted once when the aggregate field is missing', () => {
+  const parsed = parseUsageLog('claude', JSON.stringify({timestamp:'2026-11-19T04:00:00Z',costUSD:0,
+    message:{id:'msg-zero',model:'unknown-free-route',usage:{input_tokens:100,output_tokens:10,
+      cache_read_input_tokens:20,cache_creation:{ephemeral_5m_input_tokens:30,ephemeral_1h_input_tokens:40}}}})+'\n','sample.jsonl');
+  const [record]=parsed.records;
+  assert.equal(record.totalTokens,200);
+  assert.equal(record.cacheWriteTokens,70);
+  assert.equal(record.costUSD,0);
+  assert.equal(record.costBasis,'reported');
+  assert.equal(record.unpriced,false);
+  assert.equal(record.costComplete,true);
+});
+
 test('undated messages are diagnosed and a completed message snapshot replaces earlier streaming usage', () => {
   const row = output => JSON.stringify({ timestamp: '2026-10-18T12:00:00+08:00', cwd: '/workspace/alpha',
     message: { id: 'request-a', model: 'claude-3-7-sonnet', usage: { input_tokens: 100, cache_read_input_tokens: 20, output_tokens: output } } });
