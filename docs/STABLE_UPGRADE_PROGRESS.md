@@ -124,3 +124,6 @@
 - 实际包内 README 所用入口已通过 npm exec 的安装目录和全新 npx 缓存检查；支持 `test:package -- --artifacts ...` 保存同一已验证 tarball、SHA-256、完整性摘要、提交与文件清单。
 - 2026-11-19 再次检查 npm 登录仍为 E401。用户明确选择“暂不登录，先准备本地候选包”；本轮不继续要求登录或发布。后续发布目标保留，候选观察和正式发布状态不改为完成。
 - 详细验收范围、试用命令、观察表与后续发布预案见 [候选验收](RELEASE_CANDIDATE_1.1.0-rc.1.md)。最终包的具体提交与摘要以产物中的 `verification.json` 为准。
+- `d3b4f0c` 的[第十一轮 CI](https://github.com/wangx1ao2/agentic-usage-hub/actions/runs/44471359314) 全部 9 作业成功，首次 npx 安装入口也跨平台通过。本机另从全新 npm 缓存通过本地 tarball 启动 MCP：初始化、3 个工具、有效调用、参数拒绝、协议专用 stdout 与 EOF 退出均成功。
+- 最后资产清单发现未引用的 `social-preview.png` 仍标 v1.0.0 和旧离线/来源说法，已原样移到 `docs/archive/` 并注明历史用途，不再进入 npm 包。当前 3 张实际界面预览保留于 `docs/images/`；归档补正后会重新生成最终本地 tarball，尚未开始候选观察。
+- 冻结代码同机基准为冷读 1,842.57 ms、追加 1,084.45 ms、静态 P95 3.71 ms、事件循环 P99 29.10 ms，达到计划建议目标；保存于候选验收 JSON，不以更快的阶段值替代最终测量。
