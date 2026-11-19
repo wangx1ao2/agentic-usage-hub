@@ -254,9 +254,13 @@ JSON 导出包含 `metadata` 和 `records`；CSV 使用 UTF-8 BOM，第一行为
 
 默认 `recorded` 保留日志金额或首次索引时捕获的估算值；费率目录以内容哈希保存版本，不能据此推测请求发生时的官方历史价。`current` 按当前或已保存的目录重算，同步作用于看板、工程、额度美元历史和导出。价格缓存损坏、写入失败或并发锁冲突时显式提示；原始日志不受影响。未知价格保存为 `null`，汇总仅包含已定价部分；已计数但未定价的缓存写入也会标记金额不完整。
 
-价目表于 2026-10-08 核对。单位为 USD / 百万 token，采用厂商直连 API 的标准文本费率；目录价为短上下文，Codex GPT-6 能逐请求核对时另计长上下文和已记录的速度档位。Qwen 默认全球部署范围并按 `QWEN_USD_CNY_RATE`（默认 7.15）把人民币换算成美元。Gemini 3.7/3.6/3.8 Flash 使用 2026 年底前优惠价。DeepSeek 使用峰时价估算，非峰时实际价格较低。GPT-Image-2 因本地图片缺少请求参数，按官方中等画质 1024×1024 输出示例 $0.053/张估算。看板金额为估算，不计缓存写入、存储、其他来源长上下文、工具、批处理、地区附加费、订阅额度和优惠。未知型号显示「暂无费率」，不借用其他型号价格。
+单位为 USD / 百万 token。2026-11-19 已复核的费率携带官方来源、日期和适用范围；其余旧参考值明确显示“待复核”，金额不标为完整。Qwen 的地域及缓存价仍在逐项审查，`QWEN_USD_CNY_RATE`（默认 7.15）是配置的换算假设，不是实时汇率。缺少托管提供商的开源模型保留 Token、金额未知。价目抽屉可查看每行的核对状态和来源。
 
-核对来源：[OpenAI](https://developers.openai.com/api/docs/pricing)、[Anthropic](https://platform.claude.com/docs/en/about-claude/pricing)、[xAI](https://docs.x.ai/developers/pricing)、[Google](https://ai.google.dev/gemini-api/docs/pricing)、[DeepSeek](https://api-docs.deepseek.com/quick_start/pricing/)、[Z.AI](https://docs.z.ai/guides/overview/pricing)、[阿里云百炼](https://help.aliyun.com/zh/model-studio/model-pricing)。
+具有完整请求明细时，按型号处理长输入和已核对的服务档位：GPT-5.4/5.5/5.6 与 GPT-6 已列型号使用 272K 门槛，Gemini 2.5 Pro 使用 200K，Grok 已列新型号从 200K 起，Haiku 5.5 使用 100K。日汇总不会被当作一次长请求。Claude 缓存写入只有在日志包含 5 分钟/1 小时拆分时才完整计价；只给合计时保留缺口。未核对的服务档位保留未知金额，Gemini 批处理不对缓存读取重复打折。GPT-5.6 Sol 优惠和 Gemini 2.5 旧路由参考价到 2026-11-30 为止，过期后“current”返回未知；已捕获金额保留，显式选择旧快照可按其捕获日期重算。
+
+这些金额为文本 API 参考估算，不含缓存存储、工具、税费、地区附加费和真实订阅扣费。GPT-Image-2 因本地图片缺少请求参数，仍单独按中等画质 1024×1024 输出示例 $0.053/张估算。新目录快照同时保存价格、规则和来源；旧快照保持原有运算口径。
+
+核对来源：[OpenAI](https://developers.openai.com/api/docs/pricing)、[Anthropic](https://platform.claude.com/docs/en/about-claude/pricing)、[xAI](https://docs.x.ai/developers/pricing)、[Google](https://aistudio.google.com/docs/pricing)、[DeepSeek](https://api-docs.deepseek.com/quick_start/pricing/)、[Z.AI](https://docs.z.ai/guides/overview/pricing)、[阿里云百炼](https://help.aliyun.com/zh/model-studio/model-pricing)。
 
 ---
 
@@ -293,7 +297,7 @@ JSON 导出包含 `metadata` 和 `records`；CSV 使用 UTF-8 BOM，第一行为
 - **工程归因环境要求**：Codex 按请求日志关联工程，不依赖 SQLite；ZCode 数据库来源需要 `node:sqlite`。完整运行建议 Node.js 24+，以启动能力探测为准。
 - **来源与金额口径**：ccusage 仅采纳 Codex、Claude、Grok 来源，其他来源由本项目适配器处理；Claude 有完整原始记录时优先采用原始记录。金额为日志金额或 API 目录价等值估算，不是订阅账单。工程成本直接来自可核对的请求，缺少工程路径或快照不一致的部分单列未归因。
 - **生图费用边界**：图片金额是本地 PNG 文件数乘以 GPT-Image-2 medium 1024×1024 的参考单价，不是逐请求费用；文件数也不等于 API 请求数。它与每张 20K Token 的人为等值换算均不进入今日、趋势、模型族、Agent 汇总或订阅对比。GPT 请求的 Token 折算不能证明已包含图像工具费用；缺少图像 usage 时，完整费用未知。图库保留单独的文件参考金额。
-- **GPT-6 缺失金额补算**：当 ccusage 对已定价的 GPT-6 模型返回 0 美元但有 Token 记录时，看板按新输入、缓存输入和输出分别补算，并标记 `≈`。逐请求日志与 ccusage Token 快照一致时，输入超过 272K 的请求按输入/缓存 2 倍、输出 1.5 倍计价；有速度档位记录时同时纳入 Fast 2 倍或 Ultrafast 6 倍 API 费率。没有速度记录时采用标准速度，无法核对请求快照时回落到短上下文估算。未知 GPT-6 型号显示“暂无费率”。
+- **Codex 请求计价**：逐请求日志与 ccusage Token 快照严格一致时，使用该型号的请求规则修正上游短上下文估算；无法匹配时保留汇总并标明请求上下文缺失。没有速度记录时使用标准速度参考，只有型号已核实的档位才应用倍率。未知型号及未经核对的显式档位保留未知金额。
 - **五小时额度与自定预算**：五小时使用率及重置时间来自本机 Codex 日志，不用美元金额推算；日志快照可能滞后。订阅对比中的默认 $130/周仅为自定 API 等值预算示例，不代表官方订阅额度，也不保证五小时能使用固定美元金额。
 - **每日额度与美元历史**：在「今日」页选择日期，查看当日消耗的五小时额度百分比、折合份数、Codex API 等值及窗口明细。用满窗口按首次达到 100% 的请求金额核算；部分窗口按可对齐区间的金额 ÷ 额度增长比例推算每 100% 金额。每日估算均值同样按这些区间加权，不纳入用满后的续跑。跨日窗口只分配当天增长；缺少午夜基线时显示下限，无额度日志时显示“未记录”。只覆盖本机日志，云端、其他设备及未定价请求可能影响完整性。
 

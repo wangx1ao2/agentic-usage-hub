@@ -275,6 +275,12 @@ JSON exports contain `metadata` and `records`. CSV uses a UTF-8 BOM, a `metadata
 
 Default `recorded` pricing preserves logged amounts or first-index estimates. Catalog snapshots are identified by a content hash; they do not establish official prices at request time. `current` recalculates with the current or a saved catalog across dashboards, projects, quota dollar history and exports. Corrupt/unwritable pricing caches and lock conflicts produce an explicit warning without changing source logs. Unknown costs remain `null`; totals contain only priced portions. Unpriced cache writes also mark costs incomplete.
 
+Catalog entries now expose their source, check date, currency, scope and verification status. Rates checked on 2026-11-19 are distinguished from legacy references awaiting review; the latter remain incomplete estimates. Qwen region/cache tariffs still require review, and its configured CNY/USD conversion is an assumption. Hosted open models without an identified provider remain unpriced. The pricing drawer displays this evidence.
+
+Verified rules apply to individual requests: listed GPT-5.4/5.5/5.6 and GPT-6 models use a 272K boundary, Gemini 2.5 Pro uses 200K, listed newer Grok models use an inclusive 200K boundary, and Haiku 5.5 uses 100K. Daily aggregates never become one long request. Claude cache-write pricing requires the logged 5-minute/1-hour split. Gemini batch/flex discounts do not also discount cache reads. Unsupported explicit service tiers stay unknown. GPT-5.6 Sol promotional and Gemini 2.5 route references expire after 2026-11-30: current recalculation then returns unknown, recorded amounts survive, and explicitly selected snapshots replay at their capture date. New snapshots retain rules and evidence; older snapshots keep their original arithmetic.
+
+These are text API equivalents excluding storage, tools, taxes, region surcharges and subscription billing. Primary references: [OpenAI](https://developers.openai.com/api/docs/pricing), [Anthropic](https://platform.claude.com/docs/en/about-claude/pricing), [Google](https://aistudio.google.com/docs/pricing), [xAI](https://docs.x.ai/developers/pricing), [DeepSeek](https://api-docs.deepseek.com/quick_start/pricing/), [Z.AI](https://docs.z.ai/guides/overview/pricing), and [Bailian](https://help.aliyun.com/zh/model-studio/model-pricing).
+
 ## 🛡️ Security & Privacy Principles
 
 1. **Local statistics and optional online quota reads**:
@@ -299,7 +305,7 @@ Default `recorded` pricing preserves logged amounts or first-index estimates. Ca
 
 **Data scope:** ccusage contributes only Codex, Claude, and Grok rows; local adapters handle overlapping sources, and complete direct Claude records take precedence. USD amounts are logged costs or catalog estimates, not subscription bills. Project costs come from reconciled requests; missing paths or unmatched snapshots stay unattributed. Codex attribution uses request logs without SQLite; ZCode requires `node:sqlite`. Node.js 24+ is recommended for full functionality, with actual capabilities probed at startup.
 
-When ccusage reports zero cost for a priced GPT-6 model with nonzero usage, the dashboard estimates an API equivalent from fresh input, cached input, and output tokens and marks it with `≈`. Matching request logs enable long-context pricing above 272K input tokens: 2x input/cache and 1.5x output. Recorded Fast or Ultrafast tiers apply 2x or 6x API pricing; missing speed metadata defaults to Standard. Unmatched token snapshots fall back to short-context estimates. Unknown GPT-6 variants remain unpriced.
+An exactly matching Codex request snapshot corrects the native short-context estimate using the selected model's rules. Unmatched snapshots keep their aggregate attribution and disclose missing request context. Missing speed metadata uses a Standard reference; explicit tiers require verified model-specific rules. Unknown models and unsupported tiers remain unpriced.
 
 Five-hour usage and reset times come from local Codex log snapshots, which may lag. The default $130/week in subscription comparisons is a user budget example, not an official allowance or a guaranteed five-hour dollar value.
 

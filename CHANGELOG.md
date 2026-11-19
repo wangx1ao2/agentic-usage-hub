@@ -13,6 +13,8 @@ This source version has not yet been published to npm. See [verification progres
 - Remove fixed initial dates, improve source recovery guidance and display unpriced model rates as unknown.
 - Retain business usage from symlinked workspaces on macOS/Windows; preserve reported zero costs and split cache-write token counts.
 - Distinguish Claude request/message identities and disclose requestless gateway assumptions; retain original reviewer estimates and their context across configuration changes.
+- Correct Gemini 2.5 rates; share per-model context, service-tier and cache-write rules between request pricing and historical recalculation. Preserve captured amounts across reference expiry and replay older snapshots with their original arithmetic.
+- Save price evidence and policies in catalog snapshots; show verified, legacy, expired, assumed and provider-required references in the pricing drawer. The complete catalog audit is still in progress.
 - Add real upstream CLI contract checks and clean-install/tarball HTTP/MCP smoke tests; expand CI to Node 22/24/26, macOS, UI and motion checks.
 
 Configuration changes and rollback steps: [Upgrading](docs/UPGRADING.md). Source verification boundaries: [Source support](docs/SOURCE_SUPPORT.md).

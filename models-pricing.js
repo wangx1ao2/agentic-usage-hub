@@ -5,6 +5,8 @@
  */
 
 require('./lib/config');
+const { quoteCatalogUsage } = require('./lib/pricing-rules');
+const { attachCatalogMetadata } = require('./lib/pricing-catalog-metadata');
 
 const COMPANY_CONFIG = {
   'OpenAI': {
@@ -67,9 +69,8 @@ function qwen38Usd(cnyIn, cnyOut, cnyCache) {
   };
 }
 
-// 官方 API 标准价（USD / 1M tokens）。默认仅计短上下文文本 token；
-// 批处理、长上下文、缓存写入/存储、工具调用和地区附加费需以账单为准。
-// 核对日期：2026-10-08；来源见 README 的「模型价格」一节。
+// API 文本参考价（USD / 1M tokens）。逐请求规则、来源、核对时间及
+// 待复核的旧参考值由 pricing-catalog-metadata 显式标记。
 const MODEL_CATALOG = {
   // ── Anthropic Claude ───────────────────────────
   'claude-fable-5-1': { label: 'Claude Fable 5.1', company: 'Anthropic', agent: 'claude', standard: { in: 10, out: 50, cache: 0.25 } },
@@ -318,15 +319,15 @@ const MODEL_CATALOG = {
     label: 'Gemini 2.5 Pro',
     company: 'Google (Gemini)',
     agent: 'antigravity',
-    standard: { in: 1.25, out: 5.00, cache: 0.3125 },
-    flagship: { in: 1.25, out: 5.00, cache: 0.3125 }
+    standard: { in: 1.25, out: 10.00, cache: 0.125 },
+    flagship: { in: 1.25, out: 10.00, cache: 0.125 }
   },
   'gemini-2.5-flash': {
     label: 'Gemini 2.5 Flash',
     company: 'Google (Gemini)',
     agent: 'antigravity',
-    standard: { in: 0.15, out: 0.60, cache: 0.0375 },
-    flagship: { in: 0.15, out: 0.60, cache: 0.0375 }
+    standard: { in: 0.30, out: 2.50, cache: 0.03 },
+    flagship: { in: 0.30, out: 2.50, cache: 0.03 }
   },
   'gemini-2.0-flash': {
     label: 'Gemini 2.0 Flash',
@@ -529,17 +530,24 @@ const MODEL_CATALOG = {
   }
 };
 
+attachCatalogMetadata(MODEL_CATALOG, QWEN_USD_CNY_RATE);
+
 // A routing ID is not evidence of a model or tariff. Public defaults remain
 // unpriced; a local, explicitly configured model supplies an optional estimate.
 const autoReviewRateModel = (process.env.CODEX_AUTO_REVIEW_RATE_MODEL || '').trim();
-const autoReviewRate = Object.hasOwn(MODEL_CATALOG, autoReviewRateModel) ? MODEL_CATALOG[autoReviewRateModel] : null;
+const autoReviewRate = Object.hasOwn(MODEL_CATALOG, autoReviewRateModel) && !MODEL_CATALOG[autoReviewRateModel].unpriced
+  ? MODEL_CATALOG[autoReviewRateModel] : null;
 MODEL_CATALOG['codex-auto-review'] = {
   label: autoReviewRate ? `codex-auto-review（按 ${autoReviewRate.label} 估算）` : 'codex-auto-review（未配置估算费率）',
   company: 'OpenAI', agent: 'codex',
   standard: autoReviewRate?.standard || { in: 0, out: 0, cache: 0 },
   flagship: autoReviewRate?.flagship || autoReviewRate?.standard || { in: 0, out: 0, cache: 0 },
   unpriced: !autoReviewRate, assumedRateModel: autoReviewRate ? autoReviewRateModel : null,
-  pricingAssumption: autoReviewRate ? `user-selected-${autoReviewRateModel}` : null
+  pricingAssumption: autoReviewRate ? `user-selected-${autoReviewRateModel}` : null,
+  pricingPolicy: autoReviewRate?.pricingPolicy || { version:1,serviceTiers:{default:1,standard:1} },
+  pricingEvidence: { ...autoReviewRate?.pricingEvidence, status: 'user-assumption',
+    referenceStatus:autoReviewRate?.pricingEvidence?.status || null,
+    note: '路由 ID 的模型和官方计费未知；仅按用户明确选择的参考型号估算。' }
 };
 
 /**
@@ -767,6 +775,7 @@ function resolveModelInfo(rawModelName, defaultAgent = 'openclaw') {
 function calculateModelCost(modelName, inTok = 0, outTok = 0, cacheTok = 0, tier = 'standard') {
   const info = resolveModelInfo(modelName);
   const catalogItem = Object.hasOwn(MODEL_CATALOG, info.canonicalName) ? MODEL_CATALOG[info.canonicalName] : null;
+  if (info.unpriced) return 0;
   let p = info.pricing;
 
   if (catalogItem) {
@@ -776,6 +785,14 @@ function calculateModelCost(modelName, inTok = 0, outTok = 0, cacheTok = 0, tier
   const freshIn = Math.max(0, (inTok || 0) - (cacheTok || 0));
   const cost = (freshIn * (p.in || 0) + (cacheTok || 0) * (p.cache || 0) + (outTok || 0) * (p.out || 0)) / 1e6;
   return +cost.toFixed(6);
+}
+
+// Canonical request components are disjoint: fresh input, cache read/write and
+// output. Daily aggregates keep the short-context reference and report gaps.
+function quoteModelUsage(modelName, usage, options = {}) {
+  const info = resolveModelInfo(modelName, options.source);
+  const row = Object.hasOwn(MODEL_CATALOG, info.canonicalName) ? MODEL_CATALOG[info.canonicalName] : null;
+  return quoteCatalogUsage(row, info.assumedRateModel || info.canonicalName, usage, options);
 }
 
 /**
@@ -810,6 +827,9 @@ function resolveModelInfoCached(rawModelName, defaultAgent = 'openclaw') {
     };
   }
 
+  const catalogRow = Object.hasOwn(MODEL_CATALOG, value.canonicalName) ? MODEL_CATALOG[value.canonicalName] : null;
+  if (catalogRow) value = { ...value, pricingPolicy: catalogRow.pricingPolicy, pricingEvidence: catalogRow.pricingEvidence,
+    ...(catalogRow.unpriced ? { unpriced: true } : {}) };
   if (_resolveCache.size >= RESOLVE_CACHE_MAX) _resolveCache.clear(); // 防无界增长
   _resolveCache.set(key, value);
   return value;
@@ -823,5 +843,6 @@ module.exports = {
   MODEL_CATALOG,
   resolveModelInfo,
   calculateModelCost,
+  quoteModelUsage,
   autoReviewCostBasis: !autoReviewRate ? 'unpriced' : autoReviewRateModel === 'gpt-6.1-sol' ? 'user-assumed-sol-rate' : 'user-assumed-model-rate'
 };

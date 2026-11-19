@@ -17,7 +17,7 @@ test('public default and invalid reviewer configuration stay unpriced through re
     const result = history.apply([row],{pricingMode:'current'})[0];
     console.log(JSON.stringify({quote,amount:getCcusageBreakdownCost('codex-auto-review',{cost:99,inputTokens:100000}),row,result,reported}));
   `;
-  for (const configured of ['', 'missing-model']) {
+  for (const configured of ['', 'missing-model', 'llama-3.3-70b']) {
     const result = JSON.parse(execFileSync(process.execPath, ['-e', source], { encoding: 'utf8',
       env: { ...process.env, AGENTIC_DISABLE_DOTENV: '1', CODEX_AUTO_REVIEW_RATE_MODEL: configured } }));
     assert.equal(result.quote.unpriced, true);

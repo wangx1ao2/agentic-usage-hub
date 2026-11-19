@@ -198,7 +198,15 @@ class ApiStub:
                                 content_type="image/png", body=b"" if self.bad_image else PNG)
         elif parsed.path == "/api/models-pricing":
             await route.fulfill(json={"models": {"gpt-ui-00": {"label": "Fixture model", "company": "OpenAI",
-                                  "agent": "codex", "standard": {"in": 1, "out": 2, "cache": 0.1}}},
+                                  "agent": "codex", "standard": {"in": 1, "out": 2, "cache": 0.1},
+                                  "pricingEvidence": {"status": "verified", "checkedAt": "2026-11-19",
+                                      "source": "https://developers.openai.com/api/docs/pricing"}},
+                                  "legacy-ui": {"label": "Legacy reference", "standard": {"in": 1},
+                                      "pricingEvidence": {"status": "legacy-reference", "source": "javascript:alert(1)"}},
+                                  "provider-ui": {"label": "Unspecified provider", "unpriced": True,
+                                      "pricingEvidence": {"status": "provider-required"}},
+                                  "expired-ui": {"label": "Expired reference", "standard": {"in": 99},
+                                      "pricingPolicy": {"validThrough": "2000-01-01"}}},
                                       "companies": {"OpenAI": {"color": "#3b82f6", "badgeClass": "badge-codex"}}})
         elif parsed.path == "/api/refresh":
             await route.fulfill(status=207 if self.refresh_report.get('partial') else 200, json=self.refresh_report)
@@ -347,6 +355,16 @@ async def check_modals(page, stub):
         await trigger.focus()
         await trigger.click()
         await expect(page.locator(f"#{modal_id}")).to_be_visible()
+        if modal_id == "pricing-modal":
+            verified = page.locator('.pricing-row[data-key="gpt-ui-00"]')
+            await expect(verified).to_contain_text("已核对 · 2026-11-19")
+            await expect(verified.locator('a')).to_have_attribute('href', 'https://developers.openai.com/api/docs/pricing')
+            await expect(page.locator('.pricing-row[data-key="legacy-ui"]')).to_contain_text('待复核')
+            await expect(page.locator('.pricing-row[data-key="legacy-ui"] a')).to_have_count(0)
+            await expect(page.locator('.pricing-row[data-key="provider-ui"]')).to_contain_text('需指定提供商')
+            await expect(page.locator('.pricing-row[data-key="provider-ui"] td').nth(2)).to_have_text('暂无费率')
+            await expect(page.locator('.pricing-row[data-key="expired-ui"]')).to_contain_text('参考价已过期')
+            await expect(page.locator('.pricing-row[data-key="expired-ui"] td').nth(2)).to_have_text('暂无费率')
         await assert_focus_inside(page, modal_id)
         for _ in range(12):
             await page.keyboard.press("Tab")
