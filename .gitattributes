@@ -1,0 +1,4 @@
+# Keep source hashes and packaged text identical across operating systems.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
