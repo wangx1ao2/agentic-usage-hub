@@ -12,7 +12,9 @@
 - One command: `npx agentic-usage-hub` (Node.js >= 20), dashboard at http://localhost:4242
 - MCP Server: `npx agentic-usage-hub --mcp` (Stdio JSON-RPC for Claude Code, Cursor, Windsurf)
 - Flags: `--port/-p`, `--open/-o`, `--mcp`, `--version/-v`, `--help/-h`
-- Optional env config via `.env` (PORT, HOST, CODEX_IMAGE_DIRS, OPENCLAW_SESSIONS_DIR, REASONIX_USAGE_FILE, QWEN_SESSIONS_DIR, QWEN_USAGE_FILE, QODER_SESSIONS_DIR, QODER_EST_IN_CHARS_PER_TOKEN, QODER_EST_OUT_CHARS_PER_TOKEN, QWEN_USD_CNY_RATE)
+- Optional env config via `.env` (PORT, HOST, CODEX_IMAGE_DIRS, OPENCLAW_SESSIONS_DIR, REASONIX_USAGE_FILE, QWEN_SESSIONS_DIR, QWEN_USAGE_FILE, QODER_SESSIONS_DIR, QODER_EST_IN_CHARS_PER_TOKEN, QODER_EST_OUT_CHARS_PER_TOKEN, QWEN_USD_CNY_RATE, QWEN_PRICING_REGION)
+- Qwen references default to cn-beijing; global/intl-singapore entries require audited model coverage. CNY/USD conversion is an assumption. Missing cache/reasoning rates remain unknown or partial, never free; costComplete and unpricedTokens identify gaps.
+- Recorded pricing preserves captured amounts and evidence; current pricing recalculates explicitly. Incomplete price intervals do not yield complete per-100% quota dollar estimates or exact budget-remaining claims.
 
 ## Docs
 

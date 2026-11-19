@@ -268,3 +268,22 @@ test('a measured request rounded to zero still has a window and its cost is reta
   assert.equal(result.daily[0].windows[0].apiEquivalentUSD, 0.01);
   assert.equal(result.daily[0].windows[0].estimatedPer100USD, null);
 });
+
+test('a partially priced interval keeps its subtotal but cannot become a full-allowance dollar estimate', () => {
+  const reset = time(30,20);
+  const rows = [event(time(30,16),reset,2),{...event(time(30,17),reset,1),costComplete:false}];
+  const history = buildQuotaHistory(rows,[snapshot(time(30,15),0,reset),snapshot(time(30,16),50,reset),snapshot(time(30,17),100,reset)]);
+  const day = history.daily[0];
+  assert.equal(day.apiEquivalentUSD,3);
+  assert.equal(day.usedPercent,100);
+  assert.equal(day.costComplete,false);
+  assert.equal(day.incompleteRequests,1);
+  assert.equal(day.averagePer100USD,null);
+  assert.equal(day.windows[0].estimatedPer100USD,null);
+  assert.equal(history.completedWindows[0].apiEquivalentAt100,null);
+  assert.equal(history.completedWindows[0].costComplete,false);
+  const zero = buildQuotaHistory([event(time(30,16),reset,0)],
+    [snapshot(time(30,15),0,reset),snapshot(time(30,16),50,reset)]).daily[0];
+  assert.equal(zero.costComplete,true);
+  assert.equal(zero.averagePer100USD,0,'A reported zero remains distinct from missing pricing');
+});

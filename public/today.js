@@ -37,10 +37,14 @@ function renderQuotaHistory() {
   const percent = row => row?.usedPercent == null || row.quotaObserved === false ? '未记录' : `${row.usageIsLowerBound ? '≥' : ''}${Number(row.usedPercent.toFixed(2))}%`;
   const units = row => row?.quotaUnits == null ? '--' : `${row.usageIsLowerBound ? '≥' : ''}${row.quotaUnits.toFixed(2)} 份`;
   const money = value => value == null ? '--' : `≈${formatUSD(value)}`;
+  const subtotal = row => row?.costComplete === false && !row.apiEquivalentUSD ? '暂无费率' : money(row?.apiEquivalentUSD);
   setText('quota-day-units', units(day));
   setText('quota-day-percent', day ? `${percent(day)} · ${day.completedWindowCount} 个窗口记录到用满` : '这一天暂无额度日志');
-  setText('quota-day-cost', money(day?.apiEquivalentUSD));
-  setText('quota-day-cost-note', '含 Codex 会话与订阅桥接 API，自动审批按 GPT-6.1 Sol 估算，图像工具费用未记录' + (day?.unpricedRequests ? ` · ${day.unpricedRequests} 次未定价请求未计入` : ' · 含用满后的续跑'));
+  setText('quota-day-cost', subtotal(day));
+  setText('quota-day-cost-note', '含 Codex 会话与订阅桥接 API，图像工具费用未记录'
+    + (state.cachedData.meta?.autoReviewNotice ? ' · ' + state.cachedData.meta.autoReviewNotice : '')
+    + (day?.incompleteRequests ? ` · ${day.incompleteRequests} 次请求金额不完整，仅含已定价部分`
+      : day?.unpricedRequests ? ` · ${day.unpricedRequests} 次未定价请求未计入` : ' · 含用满后的续跑'));
   setText('quota-day-average', money(day?.averagePer100USD));
   setText('quota-day-average-note', day?.comparableUsedPercent > 0 ? `按 ${Number(day.comparableUsedPercent.toFixed(2))}% 可对齐的额度增长估算${day.estimateLowSample ? ' · 样本较小，波动大' : ''}` : '额度与金额记录不足，暂不推算');
   setText('quota-window-caption', `${date} · 每个五小时窗口`);
@@ -67,7 +71,7 @@ function renderQuotaHistory() {
     const transitionNote = endsAt < row.resetsAt ? `<small>下一窗口开始 · 原定 ${esc(time(row.resetsAt))} 重置</small>` : '';
     return `<tr data-key="${esc(date+':'+row.startsAt)}"><td><span class="font-mono">${esc(time(row.startsAt))}–${esc(time(endsAt))}</span>${transitionNote}${row.startCovered ? '' : '<small>窗口开头记录不完整</small>'}</td>
       <td><strong class="font-mono">${percent(row)}</strong><div class="quota-window-meter"><span style="width:${Math.min(100, Math.max(0, row.usedPercent))}%"></span></div></td>
-      <td class="font-mono">${money(row.apiEquivalentUSD)}${apiNote}</td><td class="font-mono">${money(row.estimatedPer100USD)}</td>
+      <td class="font-mono">${subtotal(row)}${row.costComplete === false ? '<small>仅已定价部分</small>' : ''}${apiNote}</td><td class="font-mono">${money(row.estimatedPer100USD)}</td>
       <td><span class="quota-basis ${['recorded100', 'confirmed100'].includes(row.estimateBasis) ? 'quota-basis-full' : ''}">${basis}</span><small>${esc(basisNote)}</small></td></tr>`;
   }).join('') : `<tr><td colspan="5" class="quota-empty">${history?.schemaVersion === 2 ? '这一天没有可核对的五小时窗口。' : '正在读取本机额度历史，后台刷新完成后显示。'}</td></tr>`;
   reconcileMarkup(windowBody,windowsMarkup,{enter:false,exit:false});
@@ -92,7 +96,7 @@ function renderQuotaHistory() {
   }
   const dailyMarkup = visible.length ? [...visible].reverse().map(row => `<tr data-key="${esc(row.date)}" class="${row.date === date ? 'quota-selected-day' : ''}">
     <td><button type="button" class="quota-date-button" data-quota-date="${esc(row.date)}" aria-pressed="${row.date === date}">${esc(row.date)}</button></td>
-    <td class="font-mono">${percent(row)}</td><td class="font-mono">${units(row)}</td><td class="font-mono">${money(row.apiEquivalentUSD)}</td>
+    <td class="font-mono">${percent(row)}</td><td class="font-mono">${units(row)}</td><td class="font-mono">${subtotal(row)}</td>
     <td class="font-mono">${money(row.averagePer100USD)}${row.estimateLowSample ? '<small>样本较小</small>' : ''}</td><td>${row.quotaObserved ? row.completedWindowCount : '--'}</td></tr>`).join('') : '<tr><td colspan="6" class="quota-empty">所选范围暂无日志</td></tr>';
   reconcileMarkup(dailyBody,dailyMarkup,{enter:false,exit:false});
   if (windowBody.dataset.selectedDate !== date) {
@@ -128,13 +132,15 @@ function renderTodayDashboard() {
   const totalTokens = mainTokens;
   const cacheTokens = todayTimeline ? todayTimeline.cacheReadTokens : 0;
   const cacheRate = mainTokens > 0 ? +(cacheTokens / mainTokens * 100).toFixed(1) : 0;
+  const incompleteCost = Object.values(todayTimeline?.byModel || {}).some(model => model.unpriced || model.costComplete === false);
 
   // 1. Fill 4 Key Metric Cards
   const elCost = document.getElementById('today-stat-cost');
   const elCostSub = document.getElementById('today-stat-cost-sub');
-  animateValue('today-stat-cost', mainCost, formatUSD);
+  animateValue('today-stat-cost', mainCost, incompleteCost && !mainCost && mainTokens ? () => '暂无费率' : formatUSD);
   if (elCost) elCost.title = '按全部来源的请求日志折算；图像工具真实费用未记录，不能据此确定完整总费用';
-  if (elCostSub) elCostSub.innerText = todayImages.count > 0 ? '全部来源请求 · 图像工具费用未记录' : '全部来源请求 · 按日志折算';
+  if (elCostSub) elCostSub.innerText = (todayImages.count > 0 ? '全部来源请求 · 图像工具费用未记录' : '全部来源请求 · 按日志折算')
+    + (incompleteCost ? ' · 仅已定价部分' : '');
   const elTokens = document.getElementById('today-stat-tokens');
   const elTokensSub = document.getElementById('today-stat-tokens-sub');
   animateValue('today-stat-tokens', totalTokens, formatTokens);
@@ -168,6 +174,7 @@ function renderTodayDashboard() {
         tokens: mData.tokens,
         costEstimated: !!mData.costEstimated,
         unpriced: !!mData.unpriced,
+        costComplete:mData.costComplete !== false && !mData.unpriced,
         color: color
       });
     }
@@ -210,11 +217,13 @@ function renderTodayDashboard() {
             <span class="today-model-dot" style="background: ${m.color};"></span>
             <div>
               <div class="today-model-name">${esc(m.name)}</div>
-              <div class="today-model-company">${esc(m.company)} · ${m.isImage ? '文件数参考，不计入合计与占比' : m.name === 'codex-auto-review' ? `按 GPT-6.1 Sol 估算 · 占比 ${pct}%` : `占比 ${pct}%`}</div>
+              <div class="today-model-company">${esc(m.company)} · ${m.isImage ? '文件数参考，不计入合计与占比' : m.name === 'codex-auto-review' ? `审批路由 · 费用依据见价格说明 · 占比 ${pct}%` : `占比 ${pct}%`}</div>
             </div>
           </div>
           <div class="today-model-stats">
-            <span class="today-model-cost font-mono">${m.isImage ? '文件参考 ≈' + formatUSD(m.cost) : m.unpriced ? '暂无费率' : (m.costEstimated ? '≈' : '') + formatUSD(m.cost)}</span>
+            <span class="today-model-cost font-mono">${m.isImage ? '文件参考 ≈' + formatUSD(m.cost)
+              : m.costComplete === false && !m.cost ? '暂无费率'
+                : (m.costEstimated ? '≈' : '') + formatUSD(m.cost) + (m.costComplete === false ? '（已定价部分）' : '')}</span>
             <span class="today-model-tokens font-mono">${formatTokens(m.tokens)} ${m.isImage ? 'Token 等值' : 'Token'}</span>
           </div>
         </div>

@@ -68,8 +68,10 @@ test('QoderWork CN Adapter & Estimated-Token Monitoring', async (t) => {
     assert.equal(flash.company, 'Qwen (通义千问)');
     // flash: 100 in*0.112 + 100 out*0.378 = 49e-6 ≈ 0.000049
     assert.ok(Math.abs(flash.cost - 0.000049) < 0.00001, `flash cost ${flash.cost}`);
-    // max: 50 fresh-in*1.678 + 214 cache*0.210 + 50 out*5.035 = 380.59e-6 ≈ 0.000381
-    assert.ok(Math.abs(max.cost - 0.000381) < 0.00001, `max cost ${max.cost}`);
+    // Max cache hit price is not public: preserve only the known input/output subtotal.
+    assert.equal(max.cost,0.000336);
+    assert.equal(max.costComplete,false);
+    assert.equal(max.unpricedTokens,max.cacheReadTokens);
     assert.ok(d.totalCost > 0);
   });
 
@@ -82,11 +84,11 @@ test('QoderWork CN Adapter & Estimated-Token Monitoring', async (t) => {
     assert.equal(resolveModelInfo('qwen3.8-max', 'qoderwork').agent, 'qwen');
     // 目录价 = 百炼 CNY / 7.15
     const p = resolveModelInfo('qwen3.8-max', 'qwen').pricing;
-    assert.equal(p.in, 1.678);   // ¥12 / 7.15
-    assert.equal(p.out, 5.035);  // ¥36 / 7.15
+    assert.equal(p.in, 12 / 7.15);
+    assert.equal(p.out, 36 / 7.15);
     const f = resolveModelInfo('qwen3.8-flash', 'qwen').pricing;
-    assert.equal(f.in, 0.112);   // ¥0.8 / 7.15
-    assert.equal(f.cache, 0.014); // ¥0.1 / 7.15
+    assert.equal(f.in, 0.8 / 7.15);
+    assert.equal(f.cache, null, 'A console-only cache rate is unknown, never free');
   });
 
   await t.test('4. incremental append re-parse keeps dedup state consistent', () => {

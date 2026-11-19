@@ -27,6 +27,7 @@ Object.assign(process.env, {
   CODEX_IMAGE_DIR: path.join(root, '.codex', 'generated_images'),
   QWEN_SESSIONS_DIR: path.join(root, '.qwen', 'projects'),
   QWEN_USAGE_FILE: path.join(root, '.qwen', 'usage.jsonl'),
+  QWEN_PRICING_REGION: 'cn-beijing', QWEN_USD_CNY_RATE:'7.15',
   QODER_SESSIONS_DIR: path.join(root, '.qoderworkcn', 'projects'),
   OPENCLAW_SESSIONS_DIR: path.join(root, '.openclaw', 'sessions'),
   REASONIX_USAGE_FILE: path.join(root, '.reasonix', 'usage.jsonl'),

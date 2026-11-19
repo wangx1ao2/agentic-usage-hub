@@ -205,6 +205,9 @@ class ApiStub:
                                       "pricingEvidence": {"status": "legacy-reference", "source": "javascript:alert(1)"}},
                                   "provider-ui": {"label": "Unspecified provider", "unpriced": True,
                                       "pricingEvidence": {"status": "provider-required"}},
+                                  "qwen-ui": {"label": "Partial Qwen reference", "standard": {"in": 1.678, "out": 5.035, "cache": None},
+                                      "pricingEvidence": {"status": "verified", "region": "cn-beijing",
+                                          "originalCurrency": "CNY", "exchangeRateCNYPerUSD": 7.15}},
                                   "expired-ui": {"label": "Expired reference", "standard": {"in": 99},
                                       "pricingPolicy": {"validThrough": "2000-01-01"}}},
                                       "companies": {"OpenAI": {"color": "#3b82f6", "badgeClass": "badge-codex"}}})
@@ -363,6 +366,9 @@ async def check_modals(page, stub):
             await expect(page.locator('.pricing-row[data-key="legacy-ui"] a')).to_have_count(0)
             await expect(page.locator('.pricing-row[data-key="provider-ui"]')).to_contain_text('需指定提供商')
             await expect(page.locator('.pricing-row[data-key="provider-ui"] td').nth(2)).to_have_text('暂无费率')
+            await expect(page.locator('.pricing-row[data-key="qwen-ui"]')).to_contain_text('cn-beijing · CNY ÷ 7.15')
+            await expect(page.locator('.pricing-row[data-key="qwen-ui"] td').nth(2)).to_have_text('$1.68')
+            await expect(page.locator('.pricing-row[data-key="qwen-ui"] td').nth(4)).to_have_text('暂无费率')
             await expect(page.locator('.pricing-row[data-key="expired-ui"]')).to_contain_text('参考价已过期')
             await expect(page.locator('.pricing-row[data-key="expired-ui"] td').nth(2)).to_have_text('暂无费率')
         await assert_focus_inside(page, modal_id)
@@ -1026,7 +1032,54 @@ async def check_project_requests(page, stub):
     await expect(button).to_be_focused()
 
 
+async def check_partial_prices(page, stub):
+    today = stub.fixture['meta']['today']
+    stub.fixture['meta']['autoReviewNotice'] = '自动审批按用户指定的 GPT-6.1 Terra 费率估算，并非实际扣费。'
+    model = {'cost': 0.1, 'tokens': 1000, 'cacheTokens': 200, 'unpricedTokens': 200,
+             'company': 'OpenAI', 'agent': 'codex', 'costComplete': False, 'costEstimated': True}
+    for day in stub.fixture['timeline']:
+        day.update(totalCost=0.1, totalTokens=1000, cacheReadTokens=200,
+                   byModel={'codex-auto-review': copy.deepcopy(model)},
+                   byCompany={'OpenAI': {'cost': 0.1, 'tokens': 1000, 'cacheTokens': 200}})
+    stub.fixture['todaySummary'] = {**copy.deepcopy(stub.fixture['timeline'][-1]),
+                                   'images': {'count': 0, 'cost': 0, 'tokens': 0}}
+    stub.fixture['imageAnalysis']['daily'] = []
+    stub.fixture['codexQuota']['daily'] = [{'date': today, 'apiEquivalentUSD': 0.1, 'costComplete': False,
+        'incompleteRequests': 1, 'usedPercent': 50, 'quotaUnits': 0.5, 'quotaObserved': True,
+        'completedWindowCount': 0, 'averagePer100USD': None, 'windows': []}]
+    await page.evaluate('loadDashboard()')
+    await open_view(page, 'today')
+    await expect(page.locator('#today-stat-cost-sub')).to_contain_text('仅已定价部分')
+    await expect(page.locator('#today-models-list')).to_contain_text('已定价部分')
+    await expect(page.locator('#today-models-list')).not_to_contain_text('GPT-6.1 Sol')
+    await expect(page.locator('#quota-day-cost-note')).to_contain_text('GPT-6.1 Terra')
+    await expect(page.locator('#quota-day-cost-note')).to_contain_text('1 次请求金额不完整')
+    await expect(page.locator('#today-roi-badge')).to_have_text('完整 API 等值未知')
+    await expect(page.locator('#today-quota-badge')).to_have_text('完整用量未知')
+    await expect(page.locator('#today-stat-quota-sub')).not_to_contain_text('预算余量')
+    await open_view(page, 'timeline')
+    await expect(page.locator('#model-rank-list')).to_contain_text('金额不完整')
+    for day in stub.fixture['timeline']:
+        day['totalCost'] = 0
+        day['byModel']['codex-auto-review']['cost'] = 0
+        day['byCompany']['OpenAI']['cost'] = 0
+    stub.fixture['todaySummary']['totalCost'] = 0
+    stub.fixture['todaySummary']['byModel']['codex-auto-review']['cost'] = 0
+    stub.fixture['codexQuota']['daily'][0]['apiEquivalentUSD'] = 0
+    await page.evaluate('loadDashboard()')
+    await open_view(page, 'today')
+    await expect(page.locator('#today-stat-cost')).to_have_text('暂无费率')
+    await expect(page.locator('#quota-day-cost')).to_have_text('暂无费率')
+    await expect(page.locator('#today-stat-roi')).to_have_text('未知')
+    await expect(page.locator('#today-stat-month-roi')).to_have_text('未知')
+    await open_view(page, 'timeline')
+    await expect(page.locator('#model-rank-list')).to_contain_text('暂无费率')
+    await page.set_viewport_size({'width': 390, 'height': 844})
+    assert await page.evaluate('document.documentElement.scrollWidth <= innerWidth'), 'Partial pricing labels overflow a narrow page'
+
+
 CHECKS = [("sources panel and failure recovery", check_sources_panel),
+          ("partial prices and reviewer assumptions", check_partial_prices),
           ("automatic loading recovery", check_loading_recovery),
           ("pricing versions and filtered exports", check_pricing_and_exports),
           ("project daily and request drilldown", check_project_requests),

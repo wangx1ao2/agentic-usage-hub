@@ -376,7 +376,7 @@ function renderCompanyGrid(timeline) {
     const cost = timeline.reduce((sum, day) => sum + (day.byCompany?.[company.name]?.cost || 0), 0);
     const tokens = timeline.reduce((sum, day) => sum + (day.byCompany?.[company.name]?.tokens || 0), 0);
     const days = timeline.filter(day => (day.byCompany?.[company.name]?.tokens || 0) > 0 || (day.byCompany?.[company.name]?.cost || 0) > 0).length;
-    const hasUnpriced = timeline.some(day => Object.values(day.byModel || {}).some(model => model.company === company.name && model.unpriced));
+    const hasUnpriced = timeline.some(day => Object.values(day.byModel || {}).some(model => model.company === company.name && (model.unpriced || model.costComplete === false)));
     return {
       ...company,
       cost,
@@ -457,12 +457,13 @@ function renderModelRanking(timeline) {
           tokens: 0,
           agent: mData.agent,
           company: mData.company,
-          unpriced: false
+          unpriced: false,costComplete:true
         };
       }
       modelMap[mName].cost += mData.cost;
       modelMap[mName].tokens += mData.tokens;
       modelMap[mName].unpriced ||= !!mData.unpriced;
+      modelMap[mName].costComplete &&= mData.costComplete !== false && !mData.unpriced;
     }
   }
 
@@ -539,6 +540,7 @@ function renderModelRanking(timeline) {
       ...fam,
       totalCost,
       totalTokens,
+      costComplete:subModels.every(model => model.isImage || model.costComplete !== false),
       subModels
     };
   }).filter(family => family.subModels.length > 0).sort((a, b) => {
@@ -560,7 +562,8 @@ function renderModelRanking(timeline) {
       <div class="family-sub-item" data-key="${esc(m.modelName)}">
         <span class="sub-model-name">${esc(m.modelName)}${m.modelName.includes('QoderWork') ? ' <span class="est-chip" title="QoderWork 采用积分计费，本地日志 token 计数被打码，此行为正文估算值">估算</span>' : ''}</span>
         <div class="sub-model-stats font-mono">
-          <span class="sub-model-cost">${m.isImage ? '文件参考 ≈' + formatUSD(m.cost) + '（不计入合计）' : m.unpriced && !m.cost ? '暂无费率' : formatUSD(m.cost)}</span>
+          <span class="sub-model-cost">${m.isImage ? '文件参考 ≈' + formatUSD(m.cost) + '（不计入合计）'
+            : m.costComplete === false && !m.cost ? '暂无费率' : formatUSD(m.cost) + (m.costComplete === false ? '（已定价部分）' : '')}</span>
           <span class="sub-model-tokens">${formatTokens(m.tokenEquivalent ?? m.tokens)}${m.tokenEquivalent != null ? ' 等值' : ''}</span>
         </div>
       </div>
@@ -574,8 +577,8 @@ function renderModelRanking(timeline) {
         </div>
         <div class="family-right">
           <div class="family-stats font-mono">
-            <div class="family-cost">${state.currentAxisMode === 'cost' ? formatUSD(fam.totalCost) : formatTokens(fam.totalTokens) + ' Token'}</div>
-            <div class="family-tokens">${state.currentAxisMode === 'cost' ? formatTokens(fam.totalTokens) + ' Token' : formatUSD(fam.totalCost)}</div>
+            <div class="family-cost">${state.currentAxisMode === 'cost' ? fam.costComplete === false && !fam.totalCost ? '暂无费率' : formatUSD(fam.totalCost) : formatTokens(fam.totalTokens) + ' Token'}</div>
+            <div class="family-tokens">${state.currentAxisMode === 'cost' ? formatTokens(fam.totalTokens) + ' Token' : fam.costComplete === false && !fam.totalCost ? '暂无费率' : formatUSD(fam.totalCost)}${fam.costComplete === false ? ' · 金额不完整' : ''}</div>
           </div>
           <button class="family-expand-btn" id="btn-${domId}" aria-expanded="${isExpanded}" aria-controls="${domId}" onclick="toggleFamilyExpand('${domId}', event)">
             <span class="disclosure-label">${isExpanded ? '收起' : '展开'}</span><svg class="disclosure-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>

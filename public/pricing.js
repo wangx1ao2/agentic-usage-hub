@@ -46,13 +46,15 @@ function renderPricingTable(models, companies) {
     const unavailable = mVal.unpriced || expired;
     const status = expired ? '参考价已过期' : {
       verified:'已核对', 'legacy-reference':'旧参考价 · 待复核',
-      'provider-required':'需指定提供商', 'user-assumption':'个人估算假设'
+      'provider-required':'需指定提供商', 'user-assumption':'个人估算假设', 'region-unavailable':'该地域暂无费率'
     }[evidence.status] || '未核对';
     const reference = /^https:\/\//.test(evidence.source || '')
       ? `<a href="${esc(evidence.source)}" style="white-space:nowrap" target="_blank" rel="noopener noreferrer">来源</a>` : '';
     const limits = [evidence.region, evidence.note, policy.validThrough ? `有效至 ${policy.validThrough}` : '',
       policy.context || policy.inputBands?.length ? '长输入规则按单次请求判断' : '短文本参考价',
       '不含存储、工具、税费和订阅扣费'].filter(Boolean).join('；');
+    const rate = (value,digits) => unavailable || typeof value !== 'number' || !Number.isFinite(value)
+      ? '暂无费率' : '$' + value.toFixed(digits);
     html += `
       <tr data-key="${esc(mKey)}" class="pricing-row" data-search="${esc(mKey)} ${esc(mVal.label || '')} ${esc(mVal.company || '')}">
         <td>
@@ -62,10 +64,11 @@ function renderPricingTable(models, companies) {
           <strong style="color:var(--text-main)">${esc(mVal.label || mKey)}</strong>
           <div style="font-size:11px;color:var(--text-dim);font-family:monospace">${esc(mKey)}</div>
           <div style="font-size:11px;color:var(--text-muted)" title="${esc(limits)}">${esc(status)}${evidence.checkedAt ? ' · ' + esc(evidence.checkedAt) : ''} ${reference}${policy.validThrough ? ' · 至 ' + esc(policy.validThrough) : ''}</div>
+          ${evidence.originalCurrency === 'CNY' ? `<div style="font-size:11px;color:var(--text-muted)">${esc(evidence.region)} · CNY ÷ ${esc(evidence.exchangeRateCNYPerUSD)}</div>` : ''}
         </td>
-        <td class="font-mono text-emerald">${unavailable ? '暂无费率' : '$' + Number(std.in || 0).toFixed(2)}</td>
-        <td class="font-mono text-blue">${unavailable ? '暂无费率' : '$' + Number(std.out || 0).toFixed(2)}</td>
-        <td class="font-mono text-purple">${unavailable ? '暂无费率' : '$' + Number(std.cache || 0).toFixed(3)}</td>
+        <td class="font-mono text-emerald">${rate(std.in,2)}</td>
+        <td class="font-mono text-blue">${rate(std.out,2)}</td>
+        <td class="font-mono text-purple">${rate(std.cache,3)}</td>
         <td>
           <span style="font-size:12px;color:var(--text-muted)">${esc(mVal.agent || 'cli')}</span>
         </td>

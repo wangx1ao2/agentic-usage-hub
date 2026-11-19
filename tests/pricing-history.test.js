@@ -84,7 +84,10 @@ test('independent HTTP/MCP history instances merge their captures and keep the f
   const first = createPricingHistory({ directory: dir, catalog: catalog(1) });
   const second = createPricingHistory({ directory: dir, catalog: catalog(2) });
   first.apply([record]);
-  assert.equal(second.apply([{ ...record, costUSD: 2 }, { ...record, id: 'another', costUSD: 2 }])[0].costUSD, 1);
+  const merged = second.apply([{ ...record, costUSD: null,unpriced:true,costBasis:'unpriced',costComplete:false }, { ...record, id: 'another', costUSD: 2 }])[0];
+  assert.equal(merged.costUSD, 1);
+  assert.equal(merged.costBasis,'catalog-estimate');
+  assert.equal(merged.unpriced,false);
   const restarted = createPricingHistory({ directory: dir, catalog: catalog(2) });
   assert.equal(restarted.apply([record])[0].costUSD, 1);
   assert.equal(restarted.apply([{ ...record, id: 'another', costUSD: 2 }])[0].costUSD, 2);

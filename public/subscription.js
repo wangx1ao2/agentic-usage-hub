@@ -161,7 +161,9 @@ function renderSubscriptionROI() {
       });
       const expired = Date.now() >= latestQuota.resetsAt;
       const completed = codexQuota.completedWindows?.at(-1);
-      quotaNote.textContent = `本机 Codex 五小时额度：${latestQuota.usedPercent}% 已使用（${time(latestQuota.observedAt)} 日志记录${expired ? '，该窗口已结束' : `，${time(latestQuota.resetsAt)} 重置`}）` + (completed ? ` · 最近用满窗口截至 ${time(completed.reached100At)}，本机可见 API 等值约 ${formatUSD(completed.apiEquivalentAt100)}` : '');
+      quotaNote.textContent = `本机 Codex 五小时额度：${latestQuota.usedPercent}% 已使用（${time(latestQuota.observedAt)} 日志记录${expired ? '，该窗口已结束' : `，${time(latestQuota.resetsAt)} 重置`}）`
+        + (completed ? ` · 最近用满窗口${completed.reached100At ? '截至 ' + time(completed.reached100At) : '首次用满时间未知'}，`
+          + (completed.apiEquivalentAt100 == null ? '完整 API 等值未知' : `本机可见 API 等值约 ${formatUSD(completed.apiEquivalentAt100)}`) : '');
     }
   }
 
@@ -179,26 +181,31 @@ function renderSubscriptionROI() {
 
   // 2. Compute Filtered Today Cost (需求2: 仅计算属于该订阅方案的模型和Agent)
   let filteredTodayCost = 0;
+  let filteredTodayComplete = true;
   const todaySummary = state.cachedData.todaySummary;
   const todayTimeline = todaySummary || (state.cachedData.timeline || []).find(d => d.date === todayStr);
   if (todayTimeline && todayTimeline.byModel) {
     for (const [mName, mData] of Object.entries(todayTimeline.byModel)) {
       if (matchesPlanScope(mData.company, mData.agent, plan)) {
         filteredTodayCost += mData.cost || 0;
+        filteredTodayComplete &&= mData.costComplete !== false && !mData.unpriced;
       }
     }
   }
 
   // 3. Compute Filtered Month-to-date Cost (需求2: 仅计算属于该订阅方案当月的模型消耗)
   let filteredMonthCost = 0;
+  let filteredMonthComplete = true;
   const monthDays = (state.cachedData.timeline || []).filter(d => d.date && d.date.startsWith(currentMonthPrefix));
   for (const day of monthDays) {
     if (!plan.vendor || plan.vendor === 'all') {
       filteredMonthCost += day.totalCost || 0;
+      filteredMonthComplete &&= !Object.values(day.byModel || {}).some(model => model.costComplete === false || model.unpriced);
     } else if (day.byModel) {
       for (const [mName, mData] of Object.entries(day.byModel)) {
         if (matchesPlanScope(mData.company, mData.agent, plan)) {
           filteredMonthCost += mData.cost || 0;
+          filteredMonthComplete &&= mData.costComplete !== false && !mData.unpriced;
         }
       }
     } else if (day.byCompany && day.byCompany[plan.vendor]) {
@@ -215,17 +222,19 @@ function renderSubscriptionROI() {
   const elCardRoi = document.getElementById('today-card-roi');
   if (elRoi) {
     const previous = Number(elRoi.dataset.ratio);
-    animateNumber(elRoi, todayRoi, value => value >= 100 ? `+${value.toFixed(0)}%` : `${value.toFixed(1)}%`);
+    animateNumber(elRoi, todayRoi, value => !filteredTodayComplete
+      ? filteredTodayCost ? `≥${value.toFixed(1)}%` : '未知'
+      : value >= 100 ? `+${value.toFixed(0)}%` : `${value.toFixed(1)}%`);
     if (elRoi.hasAttribute('data-ratio') && previous < 100 && todayRoi >= 100) highlightChange(elCardRoi, 400);
     elRoi.dataset.ratio = String(todayRoi);
   }
   if (elRoiBadge) {
     if (todayRoi >= 100) {
-      elRoiBadge.innerText = 'API 等值高于日均费用';
+      elRoiBadge.innerText = filteredTodayComplete ? 'API 等值高于日均费用' : '已知部分高于日均费用';
       elRoiBadge.className = 'roi-badge roi-badge-good';
       if (elCardRoi) elCardRoi.className = 'today-roi-card roi-card-glow-green';
     } else {
-      elRoiBadge.innerText = 'API 等值低于日均费用';
+      elRoiBadge.innerText = filteredTodayComplete ? 'API 等值低于日均费用' : '完整 API 等值未知';
       elRoiBadge.className = 'roi-badge roi-badge-warn';
       if (elCardRoi) elCardRoi.className = 'today-roi-card roi-card-glow-amber';
     }
@@ -233,7 +242,9 @@ function renderSubscriptionROI() {
   if (elRoiSub) {
     const vendorLabel = plan.vendor === 'all' ? '全生态' : plan.vendor === 'OpenAI' ? 'OpenAI/Codex' : plan.vendor;
     const costBreakdown = '（请求日志折算）';
-    if (todayRoi >= 100) {
+    if (!filteredTodayComplete) {
+      elRoiSub.innerText = `${vendorLabel}已定价部分 ${formatUSD(filteredTodayCost)} · 日均订阅费 ${formatUSD(dailyCost)}；完整金额未知`;
+    } else if (todayRoi >= 100) {
       const surplus = filteredTodayCost - dailyCost;
       elRoiSub.innerText = `${vendorLabel} API 等值 ${formatUSD(filteredTodayCost)}${costBreakdown} · 日均订阅费 ${formatUSD(dailyCost)} (差额 ${formatUSD(surplus)})`;
     } else {
@@ -250,7 +261,7 @@ function renderSubscriptionROI() {
   const elQuotaBadge = document.getElementById('today-quota-badge');
   const elQuotaSub = document.getElementById('today-stat-quota-sub');
   const elQuotaBar = document.getElementById('today-quota-bar-fill');
-  if (elQuotaPct) animateNumber(elQuotaPct,quotaPct,value=>`${value.toFixed(1)}%`);
+  if (elQuotaPct) animateNumber(elQuotaPct,quotaPct,value=>!filteredTodayComplete ? filteredTodayCost ? `≥${value.toFixed(1)}%` : '未知' : `${value.toFixed(1)}%`);
   const previousBudget = Number(elQuotaBar?.dataset.percent);
   if (elQuotaBar) elQuotaBar.dataset.percent=String(quotaPct);
   if (Number.isFinite(previousBudget) && previousBudget<=100 && quotaPct>100) highlightChange(document.getElementById('today-card-quota'),400);
@@ -266,8 +277,11 @@ function renderSubscriptionROI() {
   }
   if (elQuotaBadge) {
     if (quotaPct > 100) {
-      elQuotaBadge.innerText = '超出自定预算';
+      elQuotaBadge.innerText = filteredTodayComplete ? '超出自定预算' : '已知部分超出自定预算';
       elQuotaBadge.className = 'roi-badge roi-badge-danger';
+    } else if (!filteredTodayComplete) {
+      elQuotaBadge.innerText = '完整用量未知';
+      elQuotaBadge.className = 'roi-badge roi-badge-warn';
     } else if (quotaPct >= 80) {
       elQuotaBadge.innerText = '接近自定预算';
       elQuotaBadge.className = 'roi-badge roi-badge-warn';
@@ -278,7 +292,9 @@ function renderSubscriptionROI() {
   }
   if (elQuotaSub) {
     const vendorLabel = plan.vendor === 'all' ? '全量' : plan.vendor === 'OpenAI' ? 'OpenAI' : plan.vendor;
-    if (quotaPct > 100) {
+    if (!filteredTodayComplete) {
+      elQuotaSub.innerText = `${vendorLabel}今日已定价部分 ${formatUSD(filteredTodayCost)} / 自定日预算 ${formatUSD(dailyQuota)}；完整金额未知`;
+    } else if (quotaPct > 100) {
       elQuotaSub.innerText = `${vendorLabel}今日 ${formatUSD(filteredTodayCost)} / 自定日预算 ${formatUSD(dailyQuota)} (超出 ${(quotaPct - 100).toFixed(0)}%)`;
     } else {
       const remainingQuota = Math.max(0, dailyQuota - filteredTodayCost);
@@ -293,22 +309,24 @@ function renderSubscriptionROI() {
   const elMonthSub = document.getElementById('today-stat-month-roi-sub');
   if (elMonthRoi) {
     const previous = Number(elMonthRoi.dataset.ratio);
-    animateNumber(elMonthRoi,monthMultiple,value=>`${value.toFixed(2)}x`);
+    animateNumber(elMonthRoi,monthMultiple,value=>!filteredMonthComplete ? filteredMonthCost ? `≥${value.toFixed(2)}x` : '未知' : `${value.toFixed(2)}x`);
     if (elMonthRoi.hasAttribute('data-ratio') && previous<1 && monthMultiple>=1) highlightChange(elMonthRoi.closest('.today-roi-card'),400);
     elMonthRoi.dataset.ratio=String(monthMultiple);
   }
   if (elMonthBadge) {
     if (monthMultiple >= 1) {
-      elMonthBadge.innerText = 'API 等值高于月费';
+      elMonthBadge.innerText = filteredMonthComplete ? 'API 等值高于月费' : '已知部分高于月费';
       elMonthBadge.className = 'roi-badge roi-badge-good';
     } else {
-      elMonthBadge.innerText = `进度 ${(monthMultiple * 100).toFixed(0)}%`;
+      elMonthBadge.innerText = filteredMonthComplete ? `进度 ${(monthMultiple * 100).toFixed(0)}%` : '完整比值未知';
       elMonthBadge.className = 'roi-badge roi-badge-warn';
     }
   }
   if (elMonthSub) {
     const vendorLabel = plan.vendor === 'all' ? '全生态' : plan.vendor === 'OpenAI' ? 'OpenAI' : plan.vendor;
-    if (monthMultiple >= 1) {
+    if (!filteredMonthComplete) {
+      elMonthSub.innerText = `${vendorLabel}当月已定价部分 ${formatUSD(filteredMonthCost)} · 订阅费 ${formatUSD(plan.monthlyFee)}；完整金额未知`;
+    } else if (monthMultiple >= 1) {
       elMonthSub.innerText = `${vendorLabel}当月 API 等值 ${formatUSD(filteredMonthCost)} · 订阅费 ${formatUSD(plan.monthlyFee)} (比值 ${monthMultiple.toFixed(1)} 倍)`;
     } else {
       const gap = Math.max(0, plan.monthlyFee - filteredMonthCost);

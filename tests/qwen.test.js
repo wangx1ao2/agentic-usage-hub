@@ -58,7 +58,7 @@ process.env.CODEX_IMAGE_DIRS = legitDir;
 
 // ── 被测模块 (env 必须先于 require 生效 — 适配器为调用时读取，双保险) ──
 const qwen = require('../qwen-adapter');
-const { resolveModelInfo, calculateModelCost } = require('../models-pricing');
+const { resolveModelInfo, quoteModelUsage } = require('../models-pricing');
 const projectAdapter = require('../project-adapter');
 const { server } = require('../unified-server');
 
@@ -97,7 +97,7 @@ test('Qwen Adapter & Monitoring', async (t) => {
     assert.equal(resolveModelInfo('qwen3-max').agent, 'qwen');
     assert.equal(resolveModelInfo('dashscope/qwen-plus-latest').canonicalName, 'qwen-plus');
     assert.equal(resolveModelInfo('qwq-32b-preview').canonicalName, 'qwq-32b');
-    assert.equal(resolveModelInfo('qwen3-coder-flash-2507').canonicalName, 'qwen3-coder-flash');
+    assert.equal(resolveModelInfo('qwen3-coder-flash-2507').unpriced, true, 'Undocumented snapshot IDs must not borrow a newer reference');
     assert.equal(resolveModelInfo('qwen3-coder-plus').canonicalName, 'qwen3-coder-plus');
     assert.equal(resolveModelInfo('qwen2.5-coder-32b-instruct').canonicalName, 'qwen-2.5-coder-32b');
     assert.equal(resolveModelInfo('qwen-vl-max-0809').canonicalName, 'qwen-vl-max');
@@ -105,9 +105,11 @@ test('Qwen Adapter & Monitoring', async (t) => {
   });
 
   await t.test('4. Qwen pricing math sanity (qwen-plus with cache hit)', () => {
-    // 1M in (200k cache), 500k out → 0.8*$0.40 + 0.2*$0.16 + 0.5*$1.20 = 0.32+0.032+0.60
-    const cost = calculateModelCost('qwen-plus', 1_000_000, 500_000, 200_000);
-    assert.equal(+cost.toFixed(4), 0.9520);
+    // Beijing, <=128K, non-thinking with implicit cache: CNY .8 / .16 / 2.
+    const quote = quoteModelUsage('qwen-plus',{inputTokens:80000,cacheReadTokens:20000,outputTokens:50000},
+      {source:'qwen',granularity:'request',cacheMode:'implicit',reasoningMode:'non-thinking'});
+    assert.ok(Math.abs(quote.cost - 0.1672 / 7.15) < 1e-12);
+    assert.equal(quote.costComplete,true);
   });
 
   await t.test('5. Project attribution includes Qwen sessions per workspace', () => {

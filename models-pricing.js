@@ -60,7 +60,8 @@ const COMPANY_CONFIG = {
 };
 
 // 阿里云百炼人民币目录价 → USD/1M tokens 换算（汇率可用 QWEN_USD_CNY_RATE 覆盖）
-const QWEN_USD_CNY_RATE = Number(process.env.QWEN_USD_CNY_RATE) > 0 ? Number(process.env.QWEN_USD_CNY_RATE) : 7.15;
+const configuredQwenExchangeRate = Number(process.env.QWEN_USD_CNY_RATE);
+const QWEN_USD_CNY_RATE = Number.isFinite(configuredQwenExchangeRate) && configuredQwenExchangeRate > 0 ? configuredQwenExchangeRate : 7.15;
 function qwen38Usd(cnyIn, cnyOut, cnyCache) {
   return {
     in: +(cnyIn / QWEN_USD_CNY_RATE).toFixed(3),
@@ -530,7 +531,8 @@ const MODEL_CATALOG = {
   }
 };
 
-attachCatalogMetadata(MODEL_CATALOG, QWEN_USD_CNY_RATE);
+attachCatalogMetadata(MODEL_CATALOG);
+require('./lib/qwen-pricing').applyQwenPricing(MODEL_CATALOG, QWEN_USD_CNY_RATE);
 
 // A routing ID is not evidence of a model or tariff. Public defaults remain
 // unpriced; a local, explicitly configured model supplies an optional estimate.
@@ -583,6 +585,12 @@ function resolveModelInfo(rawModelName, defaultAgent = 'openclaw') {
   if (Object.hasOwn(MODEL_CATALOG, cleaned)) {
     return fromCatalog(cleaned);
   }
+  // A dated Qwen snapshot can have a different promotion or input band. Only
+  // explicitly audited snapshots may share a catalog row.
+  if (/^(?:qwen|qwq)/i.test(cleaned) && /-(?:20\d{6}|20\d{2}-\d{2}-\d{2})$/.test(cleaned)) {
+    const snapshot = cleaned.toLowerCase().replace(/-(20\d{2})(\d{2})(\d{2})$/, '-$1-$2-$3');
+    return Object.hasOwn(MODEL_CATALOG,snapshot) ? fromCatalog(snapshot) : unpriced('Qwen (通义千问)','qwen');
+  }
   if (Object.hasOwn(MODEL_CATALOG, baseKey)) {
     return fromCatalog(baseKey);
   }
@@ -595,7 +603,7 @@ function resolveModelInfo(rawModelName, defaultAgent = 'openclaw') {
   if (lower === 'gemini-3.7-flash') return fromCatalog('Gemini 3.7 Flash');
   if (lower === 'deepseek-v4-flash' || lower === 'deepseek-v4.1-flash') return fromCatalog('deepseek-flash');
   if (lower === 'qwen3.8-vl-27b') return fromCatalog('qwen3.8-27b');
-  if (/^qwen3\.7-(max|plus|flash)-20\d{2}-\d{2}-\d{2}$/.test(lower)) return fromCatalog(lower.replace(/-20\d{2}-\d{2}-\d{2}$/, ''));
+  if (/^qwen(?!2\.5-)\d+(?:\.\d+)?-/.test(lower)) return unpriced('Qwen (通义千问)','qwen');
   const claudeId = lower.match(/^claude-(opus|sonnet|haiku)-(\d+)-(\d+)(?:-\d{8})?$/);
   if (claudeId) {
     const [, family, major, minor] = claudeId;

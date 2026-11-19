@@ -16,7 +16,7 @@ test('current standard rates and provider aliases', () => {
     'Gemini 3.7 Flash': [0.75, 0.075, 3.75],
     'deepseek-flash': [0.3, 0.006, 1.2],
     'GLM-5.3': [1.4, 0.26, 4.4],
-    'qwen3.8-max': [+(12 / 7.15).toFixed(3), +(1.5 / 7.15).toFixed(3), +(36 / 7.15).toFixed(3)]
+    'qwen3.8-max': [12 / 7.15, null, 36 / 7.15]
   };
   for (const [id, [input, cached, output]] of Object.entries(expected)) {
     assert.deepEqual(MODEL_CATALOG[id].standard, { in: input, cache: cached, out: output }, id);
