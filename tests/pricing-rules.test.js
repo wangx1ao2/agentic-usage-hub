@@ -30,6 +30,9 @@ test('verified request boundaries include cache reads and differ from a daily ag
   close(quote('grok-4.7',100000,100000).cost,0.512);
   assert.equal(quote('claude-haiku-5-5',10000,90000).longContext,false);
   close(quote('claude-haiku-5-5',10001,90000).cost,0.0120005);
+  assert.equal(quote('gpt-5.4-mini',272001,0).cost,null);
+  assert.equal(quote('gpt-5.3-codex',272001,0).cost,null);
+  close(quote('gpt-5.4-mini',100000,100000,10000,{serviceTier:'batch'}).cost,0.06375);
 });
 
 test('Gemini corrected rates, long prompt band and batch cache prices are independent', () => {

@@ -49,7 +49,7 @@ function renderPricingTable(models, companies) {
       'provider-required':'需指定提供商', 'user-assumption':'个人估算假设'
     }[evidence.status] || '未核对';
     const reference = /^https:\/\//.test(evidence.source || '')
-      ? `<a href="${esc(evidence.source)}" target="_blank" rel="noopener noreferrer">来源</a>` : '';
+      ? `<a href="${esc(evidence.source)}" style="white-space:nowrap" target="_blank" rel="noopener noreferrer">来源</a>` : '';
     const limits = [evidence.region, evidence.note, policy.validThrough ? `有效至 ${policy.validThrough}` : '',
       policy.context || policy.inputBands?.length ? '长输入规则按单次请求判断' : '短文本参考价',
       '不含存储、工具、税费和订阅扣费'].filter(Boolean).join('；');
