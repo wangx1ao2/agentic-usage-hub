@@ -86,7 +86,7 @@ async function main() {
     results.push({ sample:alias, metadataRows:rows.length, parsedRequests:parsed.events.length,
       fieldsMatch:fields.every(field=>expected[field]===actual[field]), expected, actual });
   }
-  const report = { source:'codex', auditDate:'2026-11-18', ccusageVersion:require(cliPackage).version,
+  const report = { source:'codex', auditDate:new Intl.DateTimeFormat('en-CA', { timeZone:'Asia/Shanghai' }).format(new Date()), ccusageVersion:require(cliPackage).version,
     scope:'up to three local main-session metadata samples; no prompts or responses copied; original logs read-only',
     samples:results, passed:results.length>0&&results.every(row=>row.fieldsMatch) };
   fs.writeFileSync(path.join(sandbox,'report.json'),JSON.stringify(report,null,2)+'\n');

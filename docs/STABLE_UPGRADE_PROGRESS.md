@@ -53,3 +53,9 @@
 [第二轮 CI](https://github.com/wangx1ao2/agentic-usage-hub/actions/runs/44332406423) 的 Linux/Windows × Node 22/24/26 核心、上游契约及实际安装包全部通过，Node 20 兼容作业也通过。浏览器作业发现 `ubuntu-latest` 已指向 Playwright 1.60.0 不支持的 Ubuntu 26.04，现固定浏览器作业为 Ubuntu 24.04；其余 Linux 验证继续使用最新镜像。macOS 仍在排队，浏览器修正后的结果待验证。
 
 以上未完成项仍属于原目标，不因本地测试通过而视为完成。候选版尚未开始真实日历观察，亦未执行 npm 发布。
+
+## 2026-11-19 跨平台修正
+
+[第三轮 CI](https://github.com/wangx1ao2/agentic-usage-hub/actions/runs/44333090342) 的浏览器、Linux/Windows × Node 22/24/26 以及 Node 20 兼容作业全部通过。macOS 发现配置路径与真实路径不一致时业务日志漏计；已在业务监控匹配中解析物理路径，同时保留配置路径作为账本工程身份，并新增符号链接/Windows junction 回归。持久索引测试的文件读取探针也已按真实路径定位，避免 macOS 临时目录别名干扰计数。
+
+本机相关 16 项测试通过；macOS 修正后的远程验证仍待完成。

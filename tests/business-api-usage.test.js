@@ -103,6 +103,21 @@ test('polling, duplicate logs, restarts and rotation never lose or double count 
   t.after(() => monitor.invalidate());
 });
 
+test('configured symlink and junction projects retain usage and their workspace identity', () => {
+  const root = fs.mkdtempSync(path.join(process.env.HOME, 'business-realpath-'));
+  const physical = path.join(root, 'workspace'), alias = path.join(root, 'alias');
+  fs.mkdirSync(path.join(physical, '.local'), { recursive: true });
+  fs.writeFileSync(path.join(physical, '.local', 'app.log'), line());
+  fs.symlinkSync(physical, alias, process.platform === 'win32' ? 'junction' : 'dir');
+  const options = { projects: () => [alias], ledgerDir: path.join(root, 'ledger') };
+  const monitor = createBusinessApiMonitor(options);
+  const [record] = monitor.getRecords();
+  assert.equal(record.totalTokens, 1100);
+  assert.equal(record.projectPath, alias);
+  assert.equal(monitor.getDiagnostics().requests, 1);
+  assert.equal(createBusinessApiMonitor(options).getRecords()[0].id, record.id);
+});
+
 test('richer usage replaces a legacy copy without changing measured totals or request identity', () => {
   const root = fs.mkdtempSync(path.join(process.env.HOME, 'business-enrichment-'));
   const logs = path.join(root, '.local');

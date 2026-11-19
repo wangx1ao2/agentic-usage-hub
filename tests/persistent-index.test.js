@@ -12,8 +12,9 @@ const { hash, snapshotPath } = require('../lib/persistent-cache');
 const { readJsonLines } = require('../lib/jsonl-reader');
 
 function fixture(name) {
-  const root = path.join(process.env.HOME, name);
-  fs.mkdirSync(root, { recursive: true });
+  const directory = path.join(process.env.HOME, name);
+  fs.mkdirSync(directory, { recursive: true });
+  const root = fs.realpathSync(directory);
   const row = input => JSON.stringify({ timestamp: '2026-10-20T04:00:00Z', model: 'qwen-plus',
     usageMetadata: { promptTokenCount: input, candidatesTokenCount: 20 } }) + '\n';
   const first = path.join(root, 'first.jsonl'), second = path.join(root, 'second.jsonl');
