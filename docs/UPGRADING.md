@@ -78,6 +78,10 @@ CODEX_AUTO_REVIEW_RATE_MODEL=gpt-6.1-sol
 
 退出新版本后切回之前已验证的程序版本，恢复升级前的派生目录备份和本机配置。原始 Agent 日志不需要恢复，因为本项目只读它们。将新版本采集的目录另存，避免覆盖新增的业务请求和额度观察；需要合并时按请求身份去重，不直接拼接或清空账本。
 
+旧程序可能拒绝新目录中的可空价格，即使持久数据仍标为 schema 1。因此回退必须恢复备份，不能仅换回可执行程序；读取失败时应保留新目录以备后续恢复。
+
+源码维护者可执行 `node scripts/check-recovery.cjs 4c2b3c9`，需要包含该检查点的 Git 历史和 tar。脚本只在隔离测试 HOME 内重建升级前源码、账本、价格和额度观察，演练日志轮转后的升级与备份回退，验证金额、历史和源文件哈希。该基线是本轮升级前的本地功能检查点，不是 npm 1.0.0 包；不把此演练扩大为所有旧包格式都已验证。
+
 ## English migration notes
 
 Use a current Node 24/26 LTS patch. Stop both dashboard and MCP before backing up the entire configured cache directory and local configuration. Keep `business-api/`, `codex-quota/` and `pricing/history.json`; these contain observations that may not be reconstructible from rotated logs.

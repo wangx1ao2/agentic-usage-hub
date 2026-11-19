@@ -292,7 +292,7 @@ function renderTodayDashboard() {
       `;
     });
     imageStripInitialized = true;
-    reconcileMarkup(stripContainer,stripHtml || '<div style="color:var(--text-dim);font-size:11px;">今日无新生成图像</div>');
+    reconcileMarkup(stripContainer,stripHtml || '<div style="grid-column:1/-1;color:var(--text-dim);font-size:11px;">今日无新生成图像</div>');
     stripContainer.querySelectorAll('[data-image-index]').forEach(card => {
       card.onclick = () => {
         card.focus({

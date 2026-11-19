@@ -24,6 +24,8 @@ See [upgrade and migration notes](docs/UPGRADING.md), [source verification bound
 
 ## 📸 Screenshots & UI Preview
 
+These are actual `1.1.0-rc.1` screens generated from isolated synthetic logs, with a visible demo label and no personal records. Reproduce them from source with `node scripts/capture-previews.cjs`.
+
 <p align="center">
   <b>Panoramic Timeline Dashboard</b><br>
   <i>Dual-dimensional drilldown (by Provider or by Model), logarithmic scale support, and custom range analysis</i><br>
@@ -32,13 +34,13 @@ See [upgrade and migration notes](docs/UPGRADING.md), [source verification bound
 
 <p align="center">
   <b>Today Live Telemetry & Agent Composition</b><br>
-  <i>Cross-provider breakdown of active token throughput, cache hit rates, and image generation counts</i><br>
+  <i>Today's requests, cache reads, projects, known cost subtotals and subscription comparison; image file references stay separate</i><br>
   <img src="docs/images/today-dashboard-preview.png" alt="Today Live Preview" width="95%">
 </p>
 
 <p align="center">
-  <b>Interactive Official Pricing Matrix Drawer</b><br>
-  <i>Catalog of 6 major AI providers and 20+ frontier models (including Claude Fable 5, Grok 4.6, GPT-5.6) with fuzzy search</i><br>
+  <b>Model Reference Pricing Drawer</b><br>
+  <i>Region, source and verification status; unpublished price components remain unknown</i><br>
   <img src="docs/images/pricing-matrix-preview.png" alt="Pricing Matrix Drawer" width="95%">
 </p>
 

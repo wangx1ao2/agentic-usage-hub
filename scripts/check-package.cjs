@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const net = require('node:net');
 const assert = require('node:assert/strict');
+const {createHash} = require('node:crypto');
 const { spawn, execFileSync } = require('node:child_process');
 const { setTimeout: delay } = require('node:timers/promises');
 const root = path.resolve(__dirname, '..');
@@ -45,35 +46,57 @@ async function main() {
   npm(['ci', '--no-audit', '--no-fund'], clean);
   const pkg = require('../package.json');
   assert.equal(require(path.join(clean, 'node_modules', 'ccusage', 'package.json')).version, pkg.dependencies.ccusage);
-  const [pack] = JSON.parse(npm(['pack', '--json', '--pack-destination', sandbox], root));
+  const artifactIndex = process.argv.indexOf('--artifacts');
+  if (artifactIndex >= 0) assert.ok(process.argv[artifactIndex+1],'--artifacts requires a destination directory');
+  const packDestination = artifactIndex >= 0 ? path.resolve(process.argv[artifactIndex+1]) : sandbox;
+  fs.mkdirSync(packDestination,{recursive:true});
+  const [pack] = JSON.parse(npm(['pack', '--json', '--pack-destination', packDestination], root));
+  const tarball = path.join(packDestination,pack.filename);
   assert.ok(pack.files.some(file => file.path === 'lib/index-worker.js'));
   assert.ok(pack.files.some(file => file.path === 'public/api.js'));
   assert.ok(!pack.files.some(file => /^(?:output|tmp|node_modules|\.cache)\//.test(file.path) || file.path === '.env'));
   const install = path.join(sandbox, 'installed');
   fs.mkdirSync(install);
   fs.writeFileSync(path.join(install, 'package.json'), JSON.stringify({ name: 'usage-hub-smoke', private: true }));
-  npm(['install', '--no-audit', '--no-fund', path.join(sandbox, pack.filename)], install);
+  npm(['install', '--no-audit', '--no-fund', tarball], install);
   const cli = path.join(install, 'node_modules', pkg.name, 'bin', 'agentic-usage-hub.js');
+  // Follow the installed README's executable entry point through npm's bin
+  // resolution as well as exercising the underlying Node CLI below.
+  assert.match(npm(['exec','--offline','--','agentic-usage-hub','--version'],install),new RegExp(pkg.version.replaceAll('.', '\\.')));
+  assert.match(npm(['exec','--offline','--','agentic-usage-hub','--help'],install),/--mcp/);
+  const npxFirstRun = path.join(sandbox,'npx-first-run');
+  fs.mkdirSync(npxFirstRun);
+  assert.match(npm(['exec','--yes','--cache',path.join(sandbox,'npx-cache'),'--package',tarball,
+    '--','agentic-usage-hub','--version'],npxFirstRun),new RegExp(pkg.version.replaceAll('.', '\\.')));
   const result = await exercisePackage(cli, install, pkg);
   const helper = path.join(__dirname,'check-offline.cjs');
   const config = require(helper).prepareOfflineFixture(sandbox,cli,install,pkg);
   const isolated = process.env.PACKAGE_OFFLINE_NAMESPACE === '1';
-  let report;
+  let fixtureReport;
   if (isolated) {
     assert.equal(process.platform, 'linux', 'The network namespace check requires Linux');
     // Installs finish before the isolated network starts. The namespace applies
     // to Node, Workers and the actual native ccusage executable alike.
-    report = execFileSync('sudo',['-n','unshare','--net','--',process.execPath,helper,'--run',config],
+    fixtureReport = execFileSync('sudo',['-n','unshare','--net','--',process.execPath,helper,'--run',config],
       {encoding:'utf8',timeout:120_000,maxBuffer:4*1024*1024,windowsHide:true});
     result.offlineNetwork = 'isolated-namespace-passed';
   } else {
-    report = execFileSync(process.execPath,[helper,'--fixture-only',config],
+    fixtureReport = execFileSync(process.execPath,[helper,'--fixture-only',config],
       {encoding:'utf8',timeout:120_000,maxBuffer:4*1024*1024,windowsHide:true});
     result.offlineNetwork = 'not-isolated-local-fixtures-passed';
   }
-  console.log(report.trim());
-  console.log(JSON.stringify({ version: pkg.version, node: process.version, platform: process.platform,
-    cleanInstall: true, tarballFiles: pack.entryCount, tarballBytes: pack.size,...result }, null, 2));
+  console.log(fixtureReport.trim());
+  const report = {version:pkg.version,node:process.version,platform:process.platform,npmExec:'passed',npxFirstRun:'passed',
+    cleanInstall:true,tarballFiles:pack.entryCount,tarballBytes:pack.size,...result};
+  if (artifactIndex >= 0) {
+    const sha256 = createHash('sha256').update(fs.readFileSync(tarball)).digest('hex');
+    fs.writeFileSync(path.join(packDestination,'SHA256SUMS.txt'),`${sha256}  ${pack.filename}\n`);
+    fs.writeFileSync(path.join(packDestination,'verification.json'),JSON.stringify({...report,
+      sourceCommit:execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim(),
+      verifiedAt:new Date().toISOString(),filename:pack.filename,sha256,integrity:pack.integrity,
+      files:pack.files.map(file=>({path:file.path,size:file.size}))},null,2)+'\n');
+  }
+  console.log(JSON.stringify(report,null,2));
 }
 
 async function exercisePackage(cli, install, pkg, {expectedTokens=0,fixtureDate,expectedSources={}}={}) {

@@ -501,7 +501,7 @@ async def check_data_presentation(page, stub):
         day['totalCost'] += 5
         day['totalTokens'] += 10_000_000
     await page.evaluate('loadDashboard()')
-    await expect(page.locator('#company-count')).to_have_text('2 个活跃来源')
+    await expect(page.locator('#company-count')).to_have_text('2 个活跃厂商')
     await expect(page.locator('#company-grid .source-row')).to_have_count(2)
     await expect(page.locator('#company-grid .source-name').first).to_have_text('OpenAI')
     await expect(page.locator('#inactive-sources-label')).to_contain_text('1')

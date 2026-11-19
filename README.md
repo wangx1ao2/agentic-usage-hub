@@ -24,6 +24,8 @@
 
 ## 📸 界面预览 (Screenshots)
 
+下图为 `1.1.0-rc.1` 实际界面，使用隔离的合成日志生成，均标有“演示数据”；不包含个人记录。可在源码目录运行 `node scripts/capture-previews.cjs` 重建。
+
 <p align="center">
   <b>全景时间走势看板 (Timeline Dashboard)</b><br>
   <i>支持按厂商、按模型双维度多维下钻，支持对数标尺与自定义区间分析</i><br>
@@ -32,13 +34,13 @@
 
 <p align="center">
   <b>今日实时消耗与 Agent 构成 (Today Live)</b><br>
-  <i>跨厂商聚合今日大模型活跃吞吐、Prompt 缓存复用率与生图资产构成</i><br>
+  <i>展示今日请求、缓存读取、工程活动、已定价部分及订阅比较；生图文件参考另列</i><br>
   <img src="docs/images/today-dashboard-preview.png" alt="Today Live Preview" width="95%">
 </p>
 
 <p align="center">
   <b>模型参考价目矩阵抽屉 (Pricing Matrix Drawer)</b><br>
-  <i>内置多厂商模型参考费率与模糊检索；实际价格请以服务商账单为准</i><br>
+  <i>显示参考地域、来源与核对状态；未公开的价格组件保留未知</i><br>
   <img src="docs/images/pricing-matrix-preview.png" alt="Pricing Matrix Drawer" width="95%">
 </p>
 

@@ -12,7 +12,7 @@ function updateChartContext() {
   const models = new Set(timeline.flatMap(day => Object.entries(day.byModel || {}).filter(([, data]) => (data[state.currentAxisMode] || data[state.currentAxisMode === 'cost' ? 'cost' : 'tokens']) > 0).map(([name]) => name)));
   const agent = state.cachedData.meta?.agentFilter || 'all';
   const name = document.querySelector(`.agent-tab[data-agent="${agent}"]`)?.textContent.trim() || '全部来源';
-  const scope = state.chartDimension === 'model' ? `${displayed.length}/${models.size} 个活跃模型` : `${displayed.length}/${available} 个活跃来源`;
+  const scope = state.chartDimension === 'model' ? `${displayed.length}/${models.size} 个活跃模型` : `${displayed.length}/${available} 个活跃厂商`;
   const missing = calendarTimeline(timeline).filter(day => day.missing).length;
   const context = document.getElementById('chart-context');
   if (context) context.textContent = `${state.startDate || '全部日期'} — ${state.endDate || '至今'} · ${name} · ${state.currentAxisMode === 'cost' ? 'USD / 日' : 'Token / 日'} · 显示 ${scope}${missing ? ` · ${missing} 天无记录，连接相邻记录点` : ''}${state.isLogScale ? ' · 对数刻度' : ''}`;
@@ -83,7 +83,7 @@ function renderMetrics(timeline) {
   renderSparkline('stat-cache-sparkline', calendar.map(day => day.missing ? null : day.cacheReadTokens));
   renderSparkline('stat-days-sparkline', calendar.map(day => day.missing ? null : day.totalTokens > 0 || day.totalCost > 0 ? 1 : 0));
   const activeSources = state.cachedData.companies.filter(company => timeline.some(day => (day.byCompany?.[company.name]?.tokens || 0) > 0 || (day.byCompany?.[company.name]?.cost || 0) > 0)).length;
-  document.getElementById('timeline-scope-summary').textContent = `${state.startDate} — ${state.endDate} · ${timeline.length} 天有数据 · ${activeSources} 个活跃来源`;
+  document.getElementById('timeline-scope-summary').textContent = `${state.startDate} — ${state.endDate} · ${timeline.length} 天有数据 · ${activeSources} 个活跃厂商`;
 }
 
 // Helper for dynamic model branding colors
@@ -405,8 +405,8 @@ function renderCompanyGrid(timeline) {
   reconcileCards(grid, cards);
   // Reconciliation keeps each row; its color is a property of that stable source.
   [...grid.children].forEach((row, index) => row.style.setProperty('--source-color', active[index].color || 'var(--accent-blue)'));
-  if (!active.length) grid.replaceChildren(emptyState('当前范围暂无活跃来源'));
-  document.getElementById('company-count').textContent = `${active.length} 个活跃来源`;
+  if (!active.length) grid.replaceChildren(emptyState('当前范围暂无活跃厂商'));
+  document.getElementById('company-count').textContent = `${active.length} 个活跃厂商`;
   const details = document.getElementById('inactive-sources');
   details.hidden = !inactive.length;
   document.getElementById('inactive-sources-label').textContent = `本区间未使用来源 · ${inactive.length}`;
