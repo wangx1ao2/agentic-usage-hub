@@ -73,8 +73,8 @@ test('Qwen Adapter & Monitoring', async (t) => {
     assert.equal(d.inputTokens, 1_000_000);
     assert.equal(d.outputTokens, 200_000);
     assert.equal(d.cacheReadTokens, 400_000);
-    // qwen3-max: fresh 600k*$1.20 + cache 400k*$0.30 + out 200k*$6.00 = 0.72+0.12+1.20 = $2.04
-    assert.equal(+d.totalCost.toFixed(2), 2.04);
+    assert.equal(d.totalCost, 0, 'Unavailable old reference contributes no invented amount');
+    assert.equal(d.modelBreakdowns[0].unpriced, true);
     assert.ok(d.modelsUsed.includes('qwen3-max (Qwen)'));
   });
 
@@ -83,12 +83,12 @@ test('Qwen Adapter & Monitoring', async (t) => {
     const d = daily.find(x => x.date === '2020-01-04');
     assert.ok(d, 'flat usage fixture day must appear');
     assert.equal(d.totalTokens, 1_500_000);
-    // qwen-turbo: 1M*$0.05 + 0.5M*$0.20 = $0.15
-    assert.equal(+d.totalCost.toFixed(2), 0.15);
+    assert.equal(d.totalCost, 0);
     assert.ok(d.modelsUsed.includes('qwen-turbo (Qwen)'));
     const mb = d.modelBreakdowns.find(m => m.modelName === 'qwen-turbo (Qwen)');
     assert.equal(mb.company, 'Qwen (通义千问)');
     assert.equal(mb.agent, 'qwen');
+    assert.equal(mb.unpriced, true);
   });
 
   await t.test('3. Qwen fuzzy model resolution', () => {
@@ -117,7 +117,8 @@ test('Qwen Adapter & Monitoring', async (t) => {
     const qwenProject = projects.find(p => p.agents.includes('qwen'));
     assert.ok(qwenProject, 'a qwen-attributed project must exist');
     assert.ok(qwenProject.companies.qwen.tokens >= 1_200_000, 'qwen tokens must be attributed');
-    assert.ok(qwenProject.companies.qwen.cost > 0, 'qwen cost must be attributed');
+    assert.equal(qwenProject.companies.qwen.cost, 0);
+    assert.equal(qwenProject.costComplete, false, 'Unverifiable cost must remain incomplete after attribution');
   });
 
   // in-process 聚合断言 (确定性: 直接读取本测试进程的夹具环境变量, 不依赖已运行服务)

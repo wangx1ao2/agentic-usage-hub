@@ -14,10 +14,12 @@ This source version has not yet been published to npm. See [verification progres
 - Retain business usage from symlinked workspaces on macOS/Windows; preserve reported zero costs and split cache-write token counts.
 - Distinguish Claude request/message identities and disclose requestless gateway assumptions; retain original reviewer estimates and their context across configuration changes.
 - Correct Gemini 2.5 rates; share per-model context, service-tier and cache-write rules between request pricing and historical recalculation. Preserve captured amounts across reference expiry and replay older snapshots with their original arithmetic.
-- Save price evidence and policies in catalog snapshots; show verified, legacy, expired, assumed and provider-required references in the pricing drawer. The complete catalog audit is still in progress.
+- Save price evidence and policies in catalog snapshots; distinguish checked current/historical references, expired prices, unverifiable old references, assumptions and provider-required models. Preserve old captures when a price is no longer publicly verifiable.
 - Add audited Qwen regional CNY references with Beijing as default, per-request input bands, cache/reasoning mode gaps and separate dated-snapshot promotions; preserve unknown components and original captures across FX changes.
 - Share repeated evidence in indexes and capture snapshots to avoid large per-request duplication; rebuild corrupt derived references while preserving corrupt durable history for recovery.
 - Remove hard-coded reviewer model labels and mark partial totals throughout Today, model families and subscription comparisons; exclude incomplete intervals from full-allowance dollar estimates.
+- Audit the remaining legacy references; distinguish Gemini generation-specific batch cache discounts and expiry dates, and use actual Claude response speed/geography for supported fast/US pricing.
+- Update Business/Team subscription names, monthly seat references and official links; preserve the old Team key and custom zero fees/budgets without calculating an invalid ratio.
 - Add real upstream CLI contract checks and clean-install/tarball HTTP/MCP smoke tests; expand CI to Node 22/24/26, macOS, UI and motion checks.
 
 Configuration changes and rollback steps: [Upgrading](docs/UPGRADING.md). Source verification boundaries: [Source support](docs/SOURCE_SUPPORT.md).

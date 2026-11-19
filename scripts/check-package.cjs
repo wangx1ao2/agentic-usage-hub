@@ -1,6 +1,6 @@
 'use strict';
 
-require('../tests/fixture-environment.cjs');
+if (require.main === module) require('../tests/fixture-environment.cjs');
 const fs = require('node:fs');
 const path = require('node:path');
 const net = require('node:net');
@@ -54,6 +54,29 @@ async function main() {
   fs.writeFileSync(path.join(install, 'package.json'), JSON.stringify({ name: 'usage-hub-smoke', private: true }));
   npm(['install', '--no-audit', '--no-fund', path.join(sandbox, pack.filename)], install);
   const cli = path.join(install, 'node_modules', pkg.name, 'bin', 'agentic-usage-hub.js');
+  const result = await exercisePackage(cli, install, pkg);
+  const helper = path.join(__dirname,'check-offline.cjs');
+  const config = require(helper).prepareOfflineFixture(sandbox,cli,install,pkg);
+  const isolated = process.env.PACKAGE_OFFLINE_NAMESPACE === '1';
+  let report;
+  if (isolated) {
+    assert.equal(process.platform, 'linux', 'The network namespace check requires Linux');
+    // Installs finish before the isolated network starts. The namespace applies
+    // to Node, Workers and the actual native ccusage executable alike.
+    report = execFileSync('sudo',['-n','unshare','--net','--',process.execPath,helper,'--run',config],
+      {encoding:'utf8',timeout:120_000,maxBuffer:4*1024*1024,windowsHide:true});
+    result.offlineNetwork = 'isolated-namespace-passed';
+  } else {
+    report = execFileSync(process.execPath,[helper,'--fixture-only',config],
+      {encoding:'utf8',timeout:120_000,maxBuffer:4*1024*1024,windowsHide:true});
+    result.offlineNetwork = 'not-isolated-local-fixtures-passed';
+  }
+  console.log(report.trim());
+  console.log(JSON.stringify({ version: pkg.version, node: process.version, platform: process.platform,
+    cleanInstall: true, tarballFiles: pack.entryCount, tarballBytes: pack.size,...result }, null, 2));
+}
+
+async function exercisePackage(cli, install, pkg, {expectedTokens=0,fixtureDate,expectedSources={}}={}) {
   assert.match(execFileSync(process.execPath, [cli, '--version'], { cwd: install, encoding: 'utf8' }), new RegExp(pkg.version.replaceAll('.', '\\.')));
   assert.match(execFileSync(process.execPath, [cli, '--help'], { cwd: install, encoding: 'utf8' }), /--port/);
 
@@ -86,7 +109,8 @@ async function main() {
       await delay(250);
     }
     assert.equal(response.status, 200, JSON.stringify({ data, stderr: http.errors }));
-    assert.equal(data.totals.totalTokens, 0);
+    assert.equal(data.totals.totalTokens, expectedTokens);
+    for (const [source,total] of Object.entries(expectedSources)) assert.equal(data.agentBreakdown[source]?.totalTokens,total,source);
     assert.equal(data.meta.sources.codexAccount.networkAccess, 'disabled');
   } finally { await stop(http); }
 
@@ -125,12 +149,15 @@ async function main() {
     assert.equal((await request('tools/list', {})).result.tools.length, 3);
     const today = await request('tools/call', { name: 'get_usage_today', arguments: {} });
     assert.equal(JSON.parse(today.result.content[0].text).totalTokens, 0);
+    if (fixtureDate) {
+      const range = await request('tools/call',{name:'get_usage_range',arguments:{startDate:fixtureDate,endDate:fixtureDate}});
+      assert.equal(JSON.parse(range.result.content[0].text).totalTokens,expectedTokens,'Installed HTTP and MCP must agree offline');
+    }
     assert.equal((await request('tools/call', { name: 'get_usage_range', arguments: { startDate: 'invalid' } })).error.code, -32602);
     mcp.stdin.end();
     assert.equal((await waitForExit(mcp)).code, 0, 'MCP EOF must stop background work');
   } finally { if (mcp.exitCode === null && mcp.signalCode === null) await stop(mcp); }
-  console.log(JSON.stringify({ version: pkg.version, node: process.version, platform: process.platform,
-    cleanInstall: true, tarballFiles: pack.entryCount, tarballBytes: pack.size,
-    http: 'passed', mcp: 'passed', mcpExit: 'clean', quotaNetwork: 'disabled' }, null, 2));
+  return {http:'passed',mcp:'passed',mcpExit:'clean',quotaNetwork:'disabled'};
 }
-main().catch(error => { console.error(error); process.exitCode = 1; });
+module.exports = {exercisePackage};
+if (require.main === module) main().catch(error => { console.error(error); process.exitCode = 1; });

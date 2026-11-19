@@ -107,20 +107,20 @@ test('Adapters & Calculations Unit Tests', async (t) => {
     assert.equal(+cost.toFixed(2), 9.96);
   });
 
-  await t.test('8. Models Pricing: calculates Grok 3 and Grok 2 accurately', () => {
+  await t.test('8. Models Pricing: old Grok names retain identity without inventing current prices', () => {
     const { calculateModelCost, resolveModelInfo } = require('../models-pricing');
     const grok3Info = resolveModelInfo('xai/grok-3');
     assert.equal(grok3Info.company, 'xAI');
     assert.equal(grok3Info.agent, 'grok');
 
-    // Grok 3: in $3, out $15, cache $0.75
-    // 800k * $3 + 200k * $0.75 + 500k * $15 = 2.40 + 0.15 + 7.50 = 10.05
+    // The legacy numeric helper returns 0 for unavailable rates; request records
+    // retain null and an explicit incomplete flag, verified in catalog-audit.
     const grok3Cost = calculateModelCost('grok-3', 1_000_000, 500_000, 200_000);
-    assert.equal(+grok3Cost.toFixed(2), 10.05);
+    assert.equal(grok3Cost, 0);
+    assert.equal(grok3Info.unpriced, true);
 
-    // Grok 2: in $2, out $10, cache $0.20
     const grok2Cost = calculateModelCost('grok-2', 1_000_000, 200_000, 0);
-    assert.equal(+grok2Cost.toFixed(2), 4.00);
+    assert.equal(grok2Cost, 0);
   });
 
   await t.test('9. Models Pricing: fuzzy matches various model identifiers', () => {

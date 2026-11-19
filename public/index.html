@@ -360,6 +360,7 @@
                 <span class="sub-scope-tag" id="today-sub-scope-badge">仅核算 OpenAI (Codex / ChatGPT)</span>
               </div>
               <p class="today-sub-desc">按请求日志的 API 等值与订阅费用对比；生图文件数参考金额不参与计算，图像工具真实费用未记录。自定预算不代表官方五小时额度。</p>
+              <p class="today-sub-desc" id="today-sub-reference"></p>
               <p class="today-sub-desc" id="today-codex-quota" hidden></p>
             </div>
           </div>
@@ -368,10 +369,10 @@
               <label for="today-sub-plan-select" class="sub-control-label">当前方案:</label>
               <select id="today-sub-plan-select" class="sub-plan-select" onchange="onSubscriptionPlanChange(this.value)">
                 <option value="chatgpt_plus">ChatGPT Plus ($20/月 · 仅核算 OpenAI / Codex)</option>
-                <option value="chatgpt_pro">ChatGPT Pro ($200/月 · 仅核算 OpenAI / Codex)</option>
-                <option value="chatgpt_team">ChatGPT Team ($25/月 · 仅核算 OpenAI / Codex)</option>
+                <option value="chatgpt_pro">ChatGPT Pro 200 ($200/月 · 仅核算 OpenAI / Codex)</option>
+                <option value="chatgpt_team">ChatGPT Business Standard ($25/席位/月付 · OpenAI / Codex)</option>
                 <option value="claude_pro">Claude Pro ($20/月 · 仅核算 Anthropic / Claude)</option>
-                <option value="claude_team">Claude Team ($30/月 · 仅核算 Anthropic / Claude)</option>
+                <option value="claude_team">Claude Team Standard ($25/席位/月付 · Anthropic / Claude)</option>
                 <option value="custom">自定义订阅方案...</option>
               </select>
             </div>
@@ -445,13 +446,13 @@
               </div>
               <div class="form-group">
                 <label for="sub-custom-fee">月度订阅费用 (USD $)</label>
-                <input type="number" id="sub-custom-fee" class="form-control" placeholder="例如: 20" min="0.1" step="0.5" value="20">
-                <small class="form-hint">用于按 30 天分摊计算日均成本（例如 $20/月 = $0.67/天）</small>
+                <input type="number" id="sub-custom-fee" class="form-control" placeholder="例如: 20" min="0" step="0.01" value="20">
+                <small class="form-hint">填写实际月费；年费除以 12。月费按 30 天分摊，0 表示不计算费用比值。</small>
               </div>
               <div class="form-group">
                 <label for="sub-custom-allowance">自定每周 API 等值预算 (USD $)</label>
-                <input type="number" id="sub-custom-allowance" class="form-control" placeholder="例如: 130" min="1" step="1" value="130">
-                <small class="form-hint">自行设置使用预算，除以 7 得到日预算；默认 $130 不代表 Plus 官方额度。</small>
+                <input type="number" id="sub-custom-allowance" class="form-control" placeholder="例如: 130" min="0" step="0.01" value="130">
+                <small class="form-hint">自行设置预算，除以 7 得到日预算；0 停用预算进度。预设金额均为示例，不代表官方额度。</small>
               </div>
             </div>
             <div class="modal-card-footer">

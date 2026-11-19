@@ -46,11 +46,11 @@ test('Claude project pricing treats fresh input separately from cache', t => {
   const dir = path.join(os.homedir(), '.claude', 'projects', 'fixture');
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, 'usage.jsonl'), JSON.stringify({ cwd: '/fixture/project', timestamp: new Date().toISOString(),
-    message: { model: 'claude-3-7-sonnet', usage: { input_tokens: 1_000_000,
-      output_tokens: 500_000, cache_read_input_tokens: 200_000 } } }));
+    message: { model: 'claude-3-7-sonnet', usage: { input_tokens: 100_000,
+      output_tokens: 50_000, cache_read_input_tokens: 20_000 } } }));
   const project = require('../project-adapter').getProjectAttributionList().find(row => row.primaryPath === '/fixture/project');
-  assert.equal(project.totalCost, 10.56);
-  assert.equal(project.totalTokens, 1_700_000);
+  assert.equal(project.totalCost, 1.056);
+  assert.equal(project.totalTokens, 170_000);
   t.after(() => { fs.unlinkSync(path.join(dir, 'usage.jsonl')); require('../lib/log-sources').sources.claude.invalidate(); });
 });
 

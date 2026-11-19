@@ -49,6 +49,8 @@ jobs:
 
     - name: Install and exercise actual tarball
       run: npm run test:package
+      env:
+        PACKAGE_OFFLINE_NAMESPACE: ${{ runner.os == 'Linux' && '1' || '0' }}
 
   legacy-node20:
     runs-on: ubuntu-latest

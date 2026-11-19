@@ -1,6 +1,6 @@
-# 价格目录复核记录（进行中）
+# 价格目录复核记录
 
-日期：2026-11-19。对应更新计划 T05。这是核对记录，尚未表示目录更新已全部实施或通过验收。目录单位为 USD / 百万 Token，费用为参考估算；本轮不推测真实订阅扣费。
+日期：2026-11-19。对应更新计划 T05。初轮目录审查已实施，最终候选验证仍在进行。目录单位为 USD / 百万 Token，费用为参考估算；本轮不推测真实订阅扣费。
 
 ## 已核对的活跃 OpenAI 型号
 
@@ -73,30 +73,82 @@ GPT-5.3 Codex 和 GPT-5.4 Mini 官方最大输入为 272K，超出时不套用 G
 
 来源与报价缺口保存在 `pricingContext`，受影响 Token 由 `unpricedTokens` 表示。只剩未知组件时金额为 null；有可计价部分时保留小计并标记 `costComplete=false`。新测试覆盖已知 0 与未知、输入分档、缓存写入守恒、重启、汇率、地域、模式和快照优惠。
 
-仍待复核的 Qwen 条目为 qwen3-max、qwen-turbo、qwen3-coder-plus、qwen3-235b-a22b、qwen-vl-max、qwq-32b、qwen-2.5-coder-32b、qwen-2.5-72b。当前官方主价目已不含部分旧型号；尤其 Qwen2.5 被明确列为下线、不可查询价格，不能把原有 USD 常量补标为已核实。
+旧 Qwen 项的逐项处理见下表。当前官方主价目已不含这些条目，Qwen2.5 被明确列为下线、不可查询价格。部分历史型号页重定向至总目录，搜索缓存仍保留旧价格；不以搜索摘要、控制台 API 示例或其他产品的停售公告作为当前百炼费率依据。已停止使用这些常量产生新金额，旧记录及其快照保留。
+
+## 29 个旧参考项的处理
+
+5 个 Gemini 参考已核对 [当前价目](https://aistudio.google.com/docs/pricing)和[生命周期](https://aistudio.google.com/docs/deprecations)：3.8/3.6 Flash 为 0.75 / 0.075 / 3.75（截至 2026-12-31）；3.1 Flash-Lite 为 0.25 / 0.025 / 1.50；2.5 Flash-Lite 为 0.10 / 0.01 / 0.40。3.7 Flash 端点已路由到 3.8，采用带说明的当前路由参考，不推定历史请求使用了 3.8。3.x 的 Batch/Flex 缓存读半价；2.5 保持缓存读单价。Priority 使用官方列价。
+
+5 个 Claude 历史参考由官方发布文章核对，表格为新输入 / 缓存读 / 输出；缓存读采用 [官方缓存倍率](https://platform.claude.com/docs/en/about-claude/pricing)，并保存[下线依据](https://platform.claude.com/docs/en/about-claude/model-deprecations)。标记为 `verified-historical`，不表示仍可调用，也不还原用户当时账单。
+
+| 型号 | 历史参考价 | 依据 / 退役日期 |
+| --- | --- | --- |
+| Claude 3.7 Sonnet | 3 / 0.3 / 15 | [发布文章](https://www.anthropic.com/news/claude-3-7-sonnet)；2026-02-19 |
+| Claude 3.5 Sonnet | 3 / 0.3 / 15 | [发布文章](https://www.anthropic.com/news/claude-3-5-sonnet)；2025-10-28 |
+| Claude 3.5 Haiku | 0.8 / 0.08 / 4 | [官方更新](https://www.anthropic.com/news/3-5-models-and-computer-use)；2026-02-19 |
+| Claude 3 Opus | 15 / 1.5 / 75 | [官方型号表](https://www.anthropic.com/news/claude-3-family)；2026-01-05 |
+| Claude 3 Haiku | 0.25 / 0.025 / 1.25 | 同上；2026-04-20 |
+
+其余 19 项标记 `reference-unavailable`，保留逐项原因及检查日期。这里的“无法核实”不等于一律认定正式下线：
+
+| 项目 | 结果与依据 |
+| --- | --- |
+| claude-4-haiku | 官方目录未找到这个正式型号，不借 Haiku 4.5 / 3.5 价格 |
+| grok-4 | 通用旧名无法唯一确定版本；官方只明确 grok-4-0709 的改路由，不推及所有别名 |
+| grok-3 | [2026-05-15 改路由](https://docs.x.ai/developers/migration/may-15-retirement)到 4.3；后继价不作为原型号历史价 |
+| grok-3-mini | 当前价格表不含；型号页重定向到目录。管理 API 示例 JSON 不作为当前在售价 |
+| grok-2 | 当前价目不含，旧常量未找到可验证依据 |
+| grok-2-vision | 当前价目不含，不套文本或后继视觉价 |
+| grok-beta | 当前价目不含，预览名缺确定版本 |
+| deepseek-chat | [官方下线公告](https://api-docs.deepseek.com/news/news260424/)：2026-07-24 15:59 UTC 后不可调用；不套 Flash 价 |
+| deepseek-reasoner | 同上；该别名曾改路由，不认定所有记录都为最初 R1 |
+| GLM-4-Plus | [Z.AI USD 价目](https://docs.z.ai/guides/overview/pricing)未列出；不跨站点、地域或提供商借价 |
+| gemini-2.0-flash | 官方列为 2026-06-01 停服；当前价格表移除 |
+| qwen3-max | 百炼当前价目移除，型号页重定向到目录，所选地域价格未核实 |
+| qwen-turbo | 当前价目未列；地域及思考模式价未核实 |
+| qwen3-coder-plus | 当前价目未列，不套 Coder Flash 价格或旧搜索摘要 |
+| qwen3-235b-a22b | 未带版本的开源型号缺当前参考，不混用不同版本与托管商 |
+| qwen-vl-max | 当前价目未列；不套 VL-OCR 或其他视觉型号 |
+| qwq-32b | 当前价目未列；旧 USD 常量缺所选地域依据 |
+| qwen-2.5-coder-32b | 百炼明确 Qwen2.5 已下线、不可查询价格 |
+| qwen-2.5-72b | 同上；保留已捕获金额，不补造历史价格 |
+
+Qwen 另参阅[下线机制](https://help.aliyun.com/zh/model-studio/model-depreciation)。部分公告正文未能读出型号 ID，未据此给全部缺失条目补上具体退役日期。
 
 ## 其他厂商
 
-- [Anthropic](https://platform.claude.com/docs/en/about-claude/pricing)：当前已打开完整官方价目页；现有 Fable 5.1、Opus/Sonnet/Haiku 5.5 和部分旧型号的基础价对应。需要完成逐条来源记录、缓存写入及 Haiku 长输入档位审查；新增 Fable 5.2 不应通过旧型号模糊匹配借价。
-- [xAI](https://docs.x.ai/developers/pricing)：已确认 Grok 4.7/4.6/4.5/4.3 及 4.20 系列、Build 0.1 的短上下文价目。官方有 200K 长上下文界限、地区和产品专用速度规则；旧型号需要单独检查，不用当前近似价冒充已核实费率。
-- [DeepSeek](https://api-docs.deepseek.com/quick_start/pricing/)：Flash 与 V4 Pro 的现有峰时基础价对应；非峰时、旧别名和日期边界仍需记录。
-- [Z.AI](https://docs.z.ai/guides/overview/pricing)：GLM-5.3、5.2、5.1、5、4.7/4.6、Flash/FlashX 价目已打开核对；旧 GLM-4-Plus 和档位差异仍需复核。
-- [阿里云百炼](https://help.aliyun.com/zh/model-studio/model-pricing)：已实施的地域、模式和快照依据见上节；8 个旧型号继续保留待复核状态。
-- 其他开源/托管模型：缺具体提供商时不能据模型名认定统一 API 单价。需核查现有 Kimi/Mistral/Codestral/Llama 参考值的来源与展示边界。
+- [Anthropic](https://platform.claude.com/docs/en/about-claude/pricing)：现有活跃型号已核对；Opus 5.5 / 5 / 4.8 的 Fast 为 2 倍，支持型号美国地域为 1.1 倍，包含缓存分项；采用实际响应 `usage.speed` / `usage.inference_geo`，不取请求愿望值。Fast 与 Batch 矛盾时未知。Fable 5.2 不模糊借 5.1 的价。
+- [xAI](https://docs.x.ai/developers/pricing)：已核对新型号 200K 边界、7 个型号 Batch 八折、Priority 2 倍。Cursor/Build 专用 Fast 不借作通用 API 档位；未提供美国端点信息时只按全局参考，不宣称含地域附加费。
+- [DeepSeek](https://api-docs.deepseek.com/quick_start/pricing/)：Flash 与 V4 Pro 采用峰时参考。官方有工作日 UTC 01–04、06–10 峰时，排除中国节假日，其余半价。没有完整节假日依据时不自动推算非峰时折扣；日志有报告金额时优先保留。
+- [Z.AI](https://docs.z.ai/guides/overview/pricing)：活跃目录已核对；未给出处的显式服务档位保持未知。旧 GLM-4-Plus 按上表处理。
+- [阿里云百炼](https://help.aliyun.com/zh/model-studio/model-pricing)：地域、模式、快照及旧型号处理见上节。
+- Kimi/Mistral/Codestral/Llama：模型名不能确定托管商；当前为 `provider-required`，不沿用无来源的原参考价。
+
+## 订阅预设
+
+官方入口：[Plus](https://help.openai.com/en/articles/6950777-what-is-chatgpt-plus)、[Pro](https://help.openai.com/en/articles/9793128-about-chatgpt-pro-tiers)、[Business](https://help.openai.com/en/articles/8792828-chatgpt-business-overview)、[Claude](https://claude.com/pricing)。预设只代表 USD 月付参考，地区、税费、席位数和实际支付可能不同。
+
+| 兼容键 | 显示名称 | 月付参考 |
+| --- | --- | --- |
+| chatgpt_plus | ChatGPT Plus | $20/月 |
+| chatgpt_pro | ChatGPT Pro 200 | $200/月；其他 Pro 档位使用自定义 |
+| chatgpt_team | ChatGPT Business Standard | $25/席位/月；年付 $20/席位/月 |
+| claude_pro | Claude Pro | $20/月；年付 $200/年 |
+| claude_team | Claude Team Standard | $25/席位/月；年付 $20/席位/月 |
+
+旧 Team 键及已存自定义金额兼容；默认周预算均为示例，不由订阅售价推算官方额度。自定义月费/预算允许 0，分别停用费用比值/预算进度；不改写为 $20/$130，也不把非零用量显示成零进度。年费由用户按实际支付除以 12。
 
 ## 已实施的兼容与展示
 
 - 新快照包含基础价、逐请求规则和来源元数据，任一变化均产生不同版本。旧快照不补写新规则，继续原有运算。参考价过期、暂未定价或估算配置变更不会改变原记录的捕获身份。
-- 67 条目录项（包含新核对的 Qwen 参考及 5 个快照 ID）标记已核对，29 条旧参考值仍明确标为 `legacy-reference`，4 条缺具体提供商的模型标为 `provider-required`；审批路由单独标为 `user-assumption`。已核对条目中的未公开组件仍可为未知，没有把审查状态当作全组件都有价格。
+- 72 条目录项为 `verified`，5 条为 `verified-historical`，19 条为 `reference-unavailable`，4 条为 `provider-required`；审批路由单独为 `user-assumption`。没有待审查的 `legacy-reference`，但核对状态不表示全组件都有价格，未公开或缺模式的金额继续未知。
 - Haiku 5.5 长输入、Grok 已核对新型号的 200K 边界、Claude 缓存写入有效期拆分已接入共享规则。未知服务档位不能借其他型号倍率。
 - 价目抽屉显示状态、核对日期、来源和有效期限；中英文 README 与迁移说明同步。`pricingContext` 随导出保留来源和缺口。
 
 ## 尚需完成
 
-1. 继续逐条复核 29 条旧参考价，包含 8 个旧 Qwen 型号；对下线、改路由与无公开依据的情况分别处理，不补造历史价格。
-2. 核对其他来源日志的服务档位和缓存写入字段是否有足够依据进入新规则；未支持字段保持缺口。
-3. 在最终目录上复验保存版本重算、首次捕获金额、边界与各接口一致性。
-4. 完成真实候选包和远程矩阵验证，随后才进入原计划的候选观察与发布。
-5. 复核订阅预设的名称、费用与计费周期；自定周预算继续明确为示例，不当作官方额度。部分金额的预算/订阅展示已修正，但不以展示修正代替价格复核。
+1. 在最终目录上复验保存版本重算、首次捕获金额、边界与各接口一致性；已增加旧价不可核实、历史价、实际速度/地域和零金额回归。
+2. 完成真实候选包和远程矩阵验证，随后进入原计划的候选观察与发布。
+3. 后续更新时复核 2026-11-30 和 2026-12-31 的期限，新增费率继续形成独立目录快照；缺少组件仍保持缺口。
 
 已完成的审批费率配置及跨进程历史保护见 [执行进度](STABLE_UPGRADE_PROGRESS.md)。本文件列出的待办仍属于原升级目标。

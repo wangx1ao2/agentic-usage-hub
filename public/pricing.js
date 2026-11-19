@@ -45,7 +45,7 @@ function renderPricingTable(models, companies) {
     const expired = policy.validThrough && new Date().toISOString().slice(0,10) > policy.validThrough;
     const unavailable = mVal.unpriced || expired;
     const status = expired ? '参考价已过期' : {
-      verified:'已核对', 'legacy-reference':'旧参考价 · 待复核',
+      verified:'已核对', 'verified-historical':'历史参考 · 已核对', 'reference-unavailable':'当前参考价不可核实', 'legacy-reference':'旧参考价 · 待复核',
       'provider-required':'需指定提供商', 'user-assumption':'个人估算假设', 'region-unavailable':'该地域暂无费率'
     }[evidence.status] || '未核对';
     const reference = /^https:\/\//.test(evidence.source || '')

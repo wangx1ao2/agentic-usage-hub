@@ -14,23 +14,29 @@ const SUBSCRIPTION_PLANS = {
     agent: 'codex',
     scopeName: 'OpenAI (Codex / ChatGPT)',
     monthlyFee: 20,
-    weeklyAllowance: 130
+    weeklyAllowance: 130,
+    reference: 'https://help.openai.com/en/articles/6950777-what-is-chatgpt-plus',
+    billing: '美国 USD 月付参考'
   },
   chatgpt_pro: {
-    name: 'ChatGPT Pro',
+    name: 'ChatGPT Pro 200',
     vendor: 'OpenAI',
     agent: 'codex',
     scopeName: 'OpenAI (Codex / ChatGPT)',
     monthlyFee: 200,
-    weeklyAllowance: 1300
+    weeklyAllowance: 1300,
+    reference: 'https://help.openai.com/en/articles/9793128-about-chatgpt-pro-tiers',
+    billing: '美国 USD 月付参考；Pro 100/500 可用自定义方案'
   },
   chatgpt_team: {
-    name: 'ChatGPT Team',
+    name: 'ChatGPT Business Standard',
     vendor: 'OpenAI',
     agent: 'codex',
     scopeName: 'OpenAI (Codex / ChatGPT)',
     monthlyFee: 25,
-    weeklyAllowance: 280
+    weeklyAllowance: 280,
+    reference: 'https://help.openai.com/en/articles/8792828-chatgpt-business-overview',
+    billing: '每席位月付参考；年付为 $20/席位/月'
   },
   claude_pro: {
     name: 'Claude Pro',
@@ -38,15 +44,19 @@ const SUBSCRIPTION_PLANS = {
     agent: 'claude',
     scopeName: 'Anthropic (Claude Code)',
     monthlyFee: 20,
-    weeklyAllowance: 120
+    weeklyAllowance: 120,
+    reference: 'https://claude.com/pricing',
+    billing: '美国 USD 月付参考；年付 $200/年'
   },
   claude_team: {
-    name: 'Claude Team',
+    name: 'Claude Team Standard',
     vendor: 'Anthropic',
     agent: 'claude',
     scopeName: 'Anthropic (Claude Code)',
-    monthlyFee: 30,
-    weeklyAllowance: 260
+    monthlyFee: 25,
+    weeklyAllowance: 260,
+    reference: 'https://claude.com/pricing',
+    billing: '每席位月付参考；年付为 $20/席位/月'
   },
   custom: {
     name: '自定义订阅',
@@ -58,14 +68,18 @@ const SUBSCRIPTION_PLANS = {
   }
 };
 const SUB_STORAGE_KEY = 'agentic_hub_sub_settings';
+function subscriptionAmount(value, fallback) {
+  return value !== null && value !== undefined && String(value).trim() !== ''
+    && Number.isFinite(Number(value)) && Number(value) >= 0 ? Number(value) : fallback;
+}
 function getSubscriptionSettings() {
   const backendDefaults = state.cachedData?.meta?.subscriptionDefaults || {};
   let settings = {
     planKey: backendDefaults.defaultPlan || 'chatgpt_plus',
     customName: '自定义订阅',
     customVendor: 'OpenAI',
-    customFee: backendDefaults.monthlyFee || 20,
-    customAllowance: backendDefaults.weeklyAllowance || 130
+    customFee: subscriptionAmount(backendDefaults.monthlyFee, 20),
+    customAllowance: subscriptionAmount(backendDefaults.weeklyAllowance, 130)
   };
   try {
     const raw = localStorage.getItem(SUB_STORAGE_KEY);
@@ -79,6 +93,8 @@ function getSubscriptionSettings() {
       }
     }
   } catch (e) {}
+  settings.customFee = subscriptionAmount(settings.customFee, 20);
+  settings.customAllowance = subscriptionAmount(settings.customAllowance, 130);
   return settings;
 }
 function saveSubscriptionSettings(settings) {
@@ -106,8 +122,8 @@ function getCurrentActivePlan() {
       vendor: v,
       agent: v === 'OpenAI' ? 'codex' : v === 'Anthropic' ? 'claude' : v.toLowerCase(),
       scopeName: vendorMap[v] || v,
-      monthlyFee: Number(settings.customFee) || 20,
-      weeklyAllowance: Number(settings.customAllowance) || 130
+      monthlyFee: settings.customFee,
+      weeklyAllowance: settings.customAllowance
     };
   }
   const preset = SUBSCRIPTION_PLANS[settings.planKey] || SUBSCRIPTION_PLANS.chatgpt_plus;
@@ -178,6 +194,17 @@ function renderSubscriptionROI() {
   if (elScopeBadge) {
     elScopeBadge.innerText = `核算范围：${plan.scopeName || plan.name} · 按请求日志折算`;
   }
+  const reference = document.getElementById('today-sub-reference');
+  if (reference) {
+    reference.replaceChildren(document.createTextNode(plan.reference
+      ? `${plan.name} · ${plan.billing} · 2026-11-19 核对，地区与税费可能不同。`
+      : '自定义月费按实际支付填写；年费请除以 12，零月费不计算费用比值。'));
+    if (plan.reference) {
+      const link = document.createElement('a');
+      link.href = plan.reference; link.target = '_blank'; link.rel = 'noopener noreferrer'; link.textContent = '官方依据';
+      reference.append(' ', link, '；实际支付不同请使用自定义方案。');
+    }
+  }
 
   // 2. Compute Filtered Today Cost (需求2: 仅计算属于该订阅方案的模型和Agent)
   let filteredTodayCost = 0;
@@ -222,14 +249,18 @@ function renderSubscriptionROI() {
   const elCardRoi = document.getElementById('today-card-roi');
   if (elRoi) {
     const previous = Number(elRoi.dataset.ratio);
-    animateNumber(elRoi, todayRoi, value => !filteredTodayComplete
+    animateNumber(elRoi, todayRoi, value => !dailyCost ? '—' : !filteredTodayComplete
       ? filteredTodayCost ? `≥${value.toFixed(1)}%` : '未知'
       : value >= 100 ? `+${value.toFixed(0)}%` : `${value.toFixed(1)}%`);
     if (elRoi.hasAttribute('data-ratio') && previous < 100 && todayRoi >= 100) highlightChange(elCardRoi, 400);
     elRoi.dataset.ratio = String(todayRoi);
   }
   if (elRoiBadge) {
-    if (todayRoi >= 100) {
+    if (!dailyCost) {
+      elRoiBadge.innerText = '月费为 0，费用比值不适用';
+      elRoiBadge.className = 'roi-badge';
+      if (elCardRoi) elCardRoi.className = 'today-roi-card';
+    } else if (todayRoi >= 100) {
       elRoiBadge.innerText = filteredTodayComplete ? 'API 等值高于日均费用' : '已知部分高于日均费用';
       elRoiBadge.className = 'roi-badge roi-badge-good';
       if (elCardRoi) elCardRoi.className = 'today-roi-card roi-card-glow-green';
@@ -261,7 +292,7 @@ function renderSubscriptionROI() {
   const elQuotaBadge = document.getElementById('today-quota-badge');
   const elQuotaSub = document.getElementById('today-stat-quota-sub');
   const elQuotaBar = document.getElementById('today-quota-bar-fill');
-  if (elQuotaPct) animateNumber(elQuotaPct,quotaPct,value=>!filteredTodayComplete ? filteredTodayCost ? `≥${value.toFixed(1)}%` : '未知' : `${value.toFixed(1)}%`);
+  if (elQuotaPct) animateNumber(elQuotaPct,quotaPct,value=>!dailyQuota ? '—' : !filteredTodayComplete ? filteredTodayCost ? `≥${value.toFixed(1)}%` : '未知' : `${value.toFixed(1)}%`);
   const previousBudget = Number(elQuotaBar?.dataset.percent);
   if (elQuotaBar) elQuotaBar.dataset.percent=String(quotaPct);
   if (Number.isFinite(previousBudget) && previousBudget<=100 && quotaPct>100) highlightChange(document.getElementById('today-card-quota'),400);
@@ -276,7 +307,10 @@ function renderSubscriptionROI() {
     }
   }
   if (elQuotaBadge) {
-    if (quotaPct > 100) {
+    if (!dailyQuota) {
+      elQuotaBadge.innerText = '未设置正数预算';
+      elQuotaBadge.className = 'roi-badge';
+    } else if (quotaPct > 100) {
       elQuotaBadge.innerText = filteredTodayComplete ? '超出自定预算' : '已知部分超出自定预算';
       elQuotaBadge.className = 'roi-badge roi-badge-danger';
     } else if (!filteredTodayComplete) {
@@ -292,7 +326,9 @@ function renderSubscriptionROI() {
   }
   if (elQuotaSub) {
     const vendorLabel = plan.vendor === 'all' ? '全量' : plan.vendor === 'OpenAI' ? 'OpenAI' : plan.vendor;
-    if (!filteredTodayComplete) {
+    if (!dailyQuota) {
+      elQuotaSub.innerText = `${vendorLabel}今日${filteredTodayComplete ? '' : '已定价部分 '}${formatUSD(filteredTodayCost)} · 周预算为 0，未计算预算进度`;
+    } else if (!filteredTodayComplete) {
       elQuotaSub.innerText = `${vendorLabel}今日已定价部分 ${formatUSD(filteredTodayCost)} / 自定日预算 ${formatUSD(dailyQuota)}；完整金额未知`;
     } else if (quotaPct > 100) {
       elQuotaSub.innerText = `${vendorLabel}今日 ${formatUSD(filteredTodayCost)} / 自定日预算 ${formatUSD(dailyQuota)} (超出 ${(quotaPct - 100).toFixed(0)}%)`;
@@ -309,12 +345,15 @@ function renderSubscriptionROI() {
   const elMonthSub = document.getElementById('today-stat-month-roi-sub');
   if (elMonthRoi) {
     const previous = Number(elMonthRoi.dataset.ratio);
-    animateNumber(elMonthRoi,monthMultiple,value=>!filteredMonthComplete ? filteredMonthCost ? `≥${value.toFixed(2)}x` : '未知' : `${value.toFixed(2)}x`);
+    animateNumber(elMonthRoi,monthMultiple,value=>!plan.monthlyFee ? '—' : !filteredMonthComplete ? filteredMonthCost ? `≥${value.toFixed(2)}x` : '未知' : `${value.toFixed(2)}x`);
     if (elMonthRoi.hasAttribute('data-ratio') && previous<1 && monthMultiple>=1) highlightChange(elMonthRoi.closest('.today-roi-card'),400);
     elMonthRoi.dataset.ratio=String(monthMultiple);
   }
   if (elMonthBadge) {
-    if (monthMultiple >= 1) {
+    if (!plan.monthlyFee) {
+      elMonthBadge.innerText = '月费为 0，费用比值不适用';
+      elMonthBadge.className = 'roi-badge';
+    } else if (monthMultiple >= 1) {
       elMonthBadge.innerText = filteredMonthComplete ? 'API 等值高于月费' : '已知部分高于月费';
       elMonthBadge.className = 'roi-badge roi-badge-good';
     } else {
@@ -357,8 +396,8 @@ function toggleCustomSubModal(show) {
     const allowanceInput = document.getElementById('sub-custom-allowance');
     if (nameInput) nameInput.value = settings.customName || '自定义订阅';
     if (vendorSelect) vendorSelect.value = settings.customVendor || 'OpenAI';
-    if (feeInput) feeInput.value = settings.customFee || 20;
-    if (allowanceInput) allowanceInput.value = settings.customAllowance || 130;
+    if (feeInput) feeInput.value = settings.customFee;
+    if (allowanceInput) allowanceInput.value = settings.customAllowance;
     showOverlay('sub-config-modal');
   } else {
     hideOverlay('sub-config-modal');
@@ -377,13 +416,13 @@ function saveCustomSubscription() {
     error = document.createElement('p'); error.id='sub-config-error'; error.className='control-error'; error.setAttribute('role','alert');
     document.querySelector('#sub-config-modal .modal-card-body').appendChild(error);
   }
-  const badFee = !Number.isFinite(customFee) || customFee<.1;
-  const badAllowance = !Number.isFinite(customAllowance) || customAllowance<1;
+  const badFee = !feeInput.value.trim() || !Number.isFinite(customFee) || customFee<0;
+  const badAllowance = !allowanceInput.value.trim() || !Number.isFinite(customAllowance) || customAllowance<0;
   feeInput.setAttribute('aria-describedby','sub-config-error'); allowanceInput.setAttribute('aria-describedby','sub-config-error');
   feeInput.setAttribute('aria-invalid',String(badFee)); allowanceInput.setAttribute('aria-invalid',String(badAllowance));
   error.hidden=!badFee && !badAllowance;
   if (!error.hidden) {
-    error.textContent=badFee ? '月度费用须为不小于 $0.10 的有效金额' : '每周预算须为不小于 $1 的有效金额';
+    error.textContent=badFee ? '月度费用须为不小于 $0 的有效金额' : '每周预算须为不小于 $0 的有效金额';
     const invalid=badFee ? feeInput : allowanceInput;
     invalid.focus(); highlightChange(invalid,180); return;
   }

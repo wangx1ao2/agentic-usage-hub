@@ -1078,7 +1078,40 @@ async def check_partial_prices(page, stub):
     assert await page.evaluate('document.documentElement.scrollWidth <= innerWidth'), 'Partial pricing labels overflow a narrow page'
 
 
+async def check_subscription_references(page, stub):
+    await open_view(page, 'today')
+    select = page.locator('#today-sub-plan-select')
+    await select.select_option('chatgpt_team')  # Existing saved key remains compatible.
+    await expect(page.locator('#today-sub-reference')).to_contain_text('ChatGPT Business Standard')
+    await expect(page.locator('#today-sub-reference')).to_contain_text('每席位月付')
+    await expect(page.locator('#today-sub-reference a')).to_have_attribute('href', 'https://help.openai.com/en/articles/8792828-chatgpt-business-overview')
+    await select.select_option('claude_team')
+    await expect(page.locator('#today-stat-month-roi-sub')).to_contain_text('订阅费 $25.00')
+    await expect(page.locator('#today-sub-reference')).to_contain_text('年付为 $20/席位/月')
+    await page.locator('#btn-sub-config').click()
+    await page.locator('#sub-custom-fee').fill('0')
+    await page.locator('#sub-custom-allowance').fill('0')
+    await page.locator('#sub-config-modal .btn-primary').click()
+    await expect(page.locator('#sub-config-modal')).not_to_be_visible()
+    for selector in ('#today-stat-roi', '#today-stat-month-roi', '#today-stat-quota-pct'):
+        await expect(page.locator(selector)).to_have_text('—')
+    await expect(page.locator('#today-roi-badge')).to_contain_text('不适用')
+    await expect(page.locator('#today-quota-badge')).to_have_text('未设置正数预算')
+    await page.reload(wait_until='domcontentloaded')
+    await open_view(page, 'today')
+    await page.locator('#btn-sub-config').click()
+    await expect(page.locator('#sub-custom-fee')).to_have_value('0')
+    await expect(page.locator('#sub-custom-allowance')).to_have_value('0')
+    await page.locator('#sub-custom-fee').fill('-1')
+    await page.locator('#sub-config-modal .btn-primary').click()
+    await expect(page.locator('#sub-config-error')).to_be_visible()
+    await page.keyboard.press('Escape')
+    await page.set_viewport_size({'width': 390, 'height': 844})
+    assert await page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+
+
 CHECKS = [("sources panel and failure recovery", check_sources_panel),
+          ("subscription references and zero amounts", check_subscription_references),
           ("partial prices and reviewer assumptions", check_partial_prices),
           ("automatic loading recovery", check_loading_recovery),
           ("pricing versions and filtered exports", check_pricing_and_exports),
