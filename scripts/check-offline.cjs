@@ -61,6 +61,11 @@ async function main(filename,isolated) {
   if (isolated) {
     assert.equal(process.platform,'linux');
     execFileSync('ip',['link','set','dev','lo','up']);
+    // Only network setup needs privilege. Run the package and native CLI as
+    // the fixture owner so their generated directories remain removable by
+    // the ordinary test runner after this process exits.
+    const owner = fs.statSync(settings.env.HOME);
+    if (process.getuid() === 0) { process.setgid(owner.gid); process.setuid(owner.uid); }
     const interfaces = Object.values(os.networkInterfaces()).flat().filter(Boolean);
     assert.ok(interfaces.length && interfaces.every(row=>row.internal),'Only loopback may be present in the network namespace');
     const networkError = await new Promise((resolve,reject)=>{

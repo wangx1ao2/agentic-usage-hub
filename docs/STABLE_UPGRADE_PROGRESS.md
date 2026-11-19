@@ -114,3 +114,4 @@
 - 本机完整 211/211 Node、28/28 UI、15 组动效通过；实际包 80 个文件，四来源固定夹具 Codex 1,100、Claude 185、Qwen 120、业务 API 60 Token，HTTP 与 MCP 均合计 1,465。日志 `catalog-final-*.log`、`offline-package-local.log`。
 - 新 Linux 验收在 tarball 安装后使用独立网络 namespace，仅启用回环并确认外网不可达，再运行同一四来源/HTTP/MCP 检查，范围包含真正的上游原生 CLI。Windows 本机只验证夹具，未宣称断网通过；Linux CI 结果尚待提交后确认。
 - 最终跨版本恢复、公开截图与包内文档复走、完整候选门槛、npm 登录/发布、3–5 天候选观察和发布后 24–48 小时复验仍未完成。
+- `25e891a` 的第九轮 CI 在 Linux 22/24/26 中实际完成断网四来源读取（外网探针 `ENETUNREACH`，HTTP/MCP 合计均 1,465）；作业随后因 root 生成目录导致普通用户清理 EACCES 而失败，不能记为整轮通过。隔离脚本现只在网络初始化时使用 root，启动应用前降回夹具目录所有者；需新提交验证退出与清理。Windows 三版本、macOS 和 Node 20 作业已成功。
