@@ -1,8 +1,10 @@
-# 🚀 Agentic Usage Hub 曝光推广全套物料与发布执行指南
+# 历史发布推广物料（v1.0.0）
+
+> 保留原版本推广草案供追溯，其中的版本、离线、价格与来源表述不作为当前候选说明。当前介绍见 [README](../README.md)，本轮验收和发布步骤见 [候选验收](RELEASE_CANDIDATE_1.1.0-rc.1.md)。
 
 本文档汇集了 **Agentic Usage Hub** 上线推广所需的全部即用型物料（包括 GitHub 仓库配置、npm 发布命令、海外社区帖子、国内技术长文、awesome-lists PR 文案与 Product Hunt 资产）。
 
-> 💡 **所有对外文案已严格遵循「红线清单」**：无敏感 API Key、数据与代码实现 100% 对齐、格式符合各社区规则。
+> 以下内容是历史草案，未在本轮作为对外文案执行。
 
 ---
 
@@ -39,7 +41,7 @@ ai-agent, llm, token-usage, usage-analytics, cost-tracking, llm-observability, d
 - 向下滚动找到 **Social preview** 区域
 - 点击 **Edit** → **Upload an image**
 - 选择已在本地生成的现成高质量大图：
-  👉 `F:\token\agentic-usage-hub\docs\images\social-preview.png` (1280×640 像素，包含六大厂商徽标与大屏预览，完全符合 GitHub 规范)
+  👉 [v1.0.0 历史社交预览](archive/social-preview-v1.0.0.png)（仅供归档，不用于当前候选发布）
 
 ### 4. 开启 Discussions 讨论区 (低门槛反馈渠道)
 - 在 **Settings** → **General** 的 Features 区域
